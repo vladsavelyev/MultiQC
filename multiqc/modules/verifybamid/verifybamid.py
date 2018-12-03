@@ -13,6 +13,7 @@ from multiqc.modules.base_module import BaseMultiqcModule
 log = logging.getLogger(__name__)
 
 class MultiqcModule(BaseMultiqcModule):
+<<<<<<< HEAD
     """
      module class, parses stderr logs.
     """

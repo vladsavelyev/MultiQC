@@ -158,11 +158,11 @@ class MultiqcModule(BaseMultiqcModule):
 
         headers = OrderedDict()
         headers['family_id'] = {
-            'title': 'Family ID',
+            'title': 'Family',
             'hidden': True if all([v == family_ids[0] for v in family_ids]) else False
         }
         headers['ancestry-prediction'] = {
-            'title': 'Ancestry',
+            'title': 'Anc',
             'description': 'Ancestry Prediction',
         }
         headers['ancestry-prob_het_check'] = {
@@ -170,10 +170,10 @@ class MultiqcModule(BaseMultiqcModule):
             'description': 'Probability predicted ancestry is correct.'
         }
         headers['sex_het_ratio'] = {
-            'title': 'Sex / Het Ratio',
+            'title': 'Sex/Het',
         }
         headers['error_sex_check'] = {
-            'title': 'Correct Sex',
+            'title': 'Correct sex',
             'description': 'Displays False if error in sample sex prediction',
         }
         headers['predicted_sex_sex_check'] = {
