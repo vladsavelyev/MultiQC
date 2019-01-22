@@ -187,7 +187,7 @@ conpair/concordance:
     contents: 'markers (coverage per marker threshold : '
     num_lines: 3
 conpair/contamination:
-    contents: 'Tumor sample contamination level: '
+    contents: 'contamination level: '
     num_lines: 3
 cutadapt:
     contents: 'This is cutadapt'

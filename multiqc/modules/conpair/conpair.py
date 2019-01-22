@@ -54,14 +54,15 @@ class MultiqcModule(BaseMultiqcModule):
         One parser to rule them all. """
 
         conpair_regexes = {
-            'concordance_concordance': r"Concordance: ([\d\.]+)%",
+            'concordance': r"Concordance: ([\d\.]+)%",
             'concordance_used_markers': r"Based on (\d+)/\d+ markers",
             'concordance_total_markers': r"Based on \d+/(\d+) markers",
             'concordance_marker_threshold': r"\(coverage per marker threshold : (\d+) reads\)",
             'concordance_min_mapping_quality': r"Minimum mappinq quality: (\d+)",
             'concordance_min_base_quality': r"Minimum base quality: (\d+)",
             'contamination_normal': r"Normal sample contamination level: ([\d\.]+)%",
-            'contamination_tumor': r"Tumor sample contamination level: ([\d\.]+)%"
+            'contamination_tumor': r"Tumor sample contamination level: ([\d\.]+)%",
+            'contamination': r"Sample contamination level: ([\d\.]+)%",
         }
 
         parsed_data = {}
@@ -71,12 +72,15 @@ class MultiqcModule(BaseMultiqcModule):
                 parsed_data[k] = float(match.group(1))
 
         def _cp_type(data):
-            if 'concordance_concordance' in parsed_data:
+            if 'concordance' in parsed_data:
                 return 'concordance'
             elif 'contamination_normal' in parsed_data:
                 return 'contamination'
 
         if len(parsed_data) > 0:
+            if 'concordance_used_markers' in parsed_data:
+                parsed_data['concordance_markers'] = str(int(parsed_data['concordance_used_markers'])) + '/' + \
+                                                     str(int(parsed_data['concordance_total_markers']))
             if f['s_name'] in self.conpair_data:
                 if(_cp_type(self.conpair_data[f['s_name']]) == _cp_type(parsed_data)):
                     log.debug("Duplicate sample name found! Overwriting: {}".format(f['s_name']))
@@ -91,13 +95,28 @@ class MultiqcModule(BaseMultiqcModule):
         basic stats table at the top of the report """
 
         headers = {}
-        headers['concordance_concordance'] = {
-            'title': 'Concordance',
+        headers['concordance'] = {
+            'title': 'T/N conc',
+            'description': 'Tumor/normal concordance',
             'max': 100,
             'min': 0,
             'suffix': '%',
             'format': '{:,.2f}',
             'scale': 'RdYlGn'
+        }
+        headers['concordance_markers'] = {
+            'title': 'Markers',
+            'description': 'Markers used to determine tumor/normal concordance level. If too low, consider running w/o -H (or --use-het-markers at wrapper)',
+            'hidden': True
+        }
+        headers['contamination'] = {
+            'title': 'Contam',
+            'description': 'Sample contamination level',
+            'max': 100,
+            'min': 0,
+            'suffix': '%',
+            'format': '{:,.3f}',
+            'scale': 'RdYlBu-rev'
         }
         headers['contamination_normal'] = {
             'title': 'N Contamination',
