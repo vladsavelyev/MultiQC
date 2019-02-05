@@ -46,6 +46,10 @@ class StatsReportMixin():
         # Filter to strip out ignored sample names
         self.samtools_stats = self.ignore_samples(self.samtools_stats)
 
+        self.read_format = '{:,.1f}&nbsp;' + config.read_count_prefix
+        if config.read_count_multiplier == 1:
+            self.read_format = '{:,.0f}'
+
         if len(self.samtools_stats) > 0:
 
             # Write parsed report data to a file
@@ -63,32 +67,25 @@ class StatsReportMixin():
                 'format': '{:,.2f}',
                 'modify': lambda x: x * 100.0
             }
-            stats_headers['non-primary_alignments'] = {
-                'title': '{} Non-Primary'.format(config.read_count_prefix),
-                'description': 'Non-primary alignments ({})'.format(config.read_count_desc),
-                'min': 0,
-                'scale': 'PuBu',
-                'modify': lambda x: x * config.read_count_multiplier,
-                'shared_key': 'read_count'
-            }
             stats_headers['reads_mapped'] = {
-                'title': '{} Reads Mapped'.format(config.read_count_prefix),
-                'description': 'Reads Mapped in the bam file ({})'.format(config.read_count_desc),
+                'title': 'Mapped',
+                'description': 'Reads mapped in the bam file ({})'.format(config.read_count_desc),
                 'min': 0,
                 'modify': lambda x: x * config.read_count_multiplier,
-                'shared_key': 'read_count'
+                'shared_key': 'read_count',
+                'format': self.read_format,
             }
             stats_headers['reads_mapped_percent'] = {
-                'title': '% Mapped',
-                'description': '% Mapped Reads',
+                'title': 'Mapped',
+                'description': '% Mapped reads',
                 'max': 100,
                 'min': 0,
                 'suffix': '%',
                 'scale': 'RdYlGn'
             }
             stats_headers['reads_properly_paired_percent'] = {
-                'title': 'Prop pair',
-                'description': '% Properly Paired Reads',
+                'title': 'Pair',
+                'description': '% Properly paired reads',
                 'max': 100,
                 'min': 0,
                 'suffix': '%',
@@ -96,20 +93,30 @@ class StatsReportMixin():
                 'hidden': True if (max([x['reads_mapped_and_paired'] for x in self.samtools_stats.values()]) == 0) else False
             }
             stats_headers['reads_MQ0_percent'] = {
-                'title': '% MapQ 0 Reads',
-                'description': '% of Reads that are Ambiguously Placed (MapQ=0)',
+                'title': 'MQ=0',
+                'description': '% of reads that are ambiguously placed (MapQ=0)',
                 'max': 100,
                 'min': 0,
                 'suffix': '%',
                 'scale': 'OrRd',
                 'hidden': True
             }
+            stats_headers['non-primary_alignments'] = {
+                'title': 'Non-primary'.format(config.read_count_prefix),
+                'description': 'Non-primary alignments ({})'.format(config.read_count_desc),
+                'min': 0,
+                'scale': 'PuBu',
+                'modify': lambda x: x * config.read_count_multiplier,
+                'shared_key': 'read_count',
+                'format': self.read_format,
+            }
             stats_headers['raw_total_sequences'] = {
-                'title': '{} Total seqs'.format(config.read_count_prefix),
+                'title': 'Total seqs'.format(config.read_count_prefix),
                 'description': 'Total sequences in the bam file ({})'.format(config.read_count_desc),
                 'min': 0,
                 'modify': lambda x: x * config.read_count_multiplier,
-                'shared_key': 'read_count'
+                'shared_key': 'read_count',
+                'format': self.read_format,
             }
             self.general_stats_addcols(self.samtools_stats, stats_headers)
 
