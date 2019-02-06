@@ -36,6 +36,9 @@ class StatsReportMixin():
                     for k in list(parsed_data.keys()):
                         if k.startswith('reads_') and k != 'raw_total_sequences' and parsed_data['raw_total_sequences'] > 0:
                             parsed_data['{}_percent'.format(k)] = (parsed_data[k] / parsed_data['raw_total_sequences']) * 100
+                total_alignments = parsed_data['reads_mapped'] + parsed_data['non-primary_alignments']
+                if total_alignments > 0:
+                    parsed_data['non-primary_alignments_percent'] = (parsed_data['non-primary_alignments'] / total_alignments) * 100
 
                 if f['s_name'] in self.samtools_stats:
                     log.debug("Duplicate sample name found! Overwriting: {}"
@@ -92,26 +95,34 @@ class StatsReportMixin():
                 'scale': 'RdYlGn',
                 'hidden': True if (max([x['reads_mapped_and_paired'] for x in self.samtools_stats.values()]) == 0) else False
             }
+            stats_headers['non-primary_alignments'] = {
+                'title': '2ry'.format(config.read_count_prefix),
+                'description': 'Non-primary alignments ({})'.format(config.read_count_desc),
+                'min': 0,
+                'scale': 'OrRd',
+                'modify': lambda x: x * config.read_count_multiplier,
+                'shared_key': 'read_count',
+                'format': self.read_format,
+            }
+            stats_headers['non-primary_alignments_percent'] = {
+                'title': '2ry'.format(config.read_count_prefix),
+                'description': '% Non-primary alignments',
+                'max': 100,
+                'min': 0,
+                'suffix': '%',
+                'scale': 'OrRd',
+            }
             stats_headers['reads_MQ0_percent'] = {
-                'title': 'MQ=0',
-                'description': '% of reads that are ambiguously placed (MapQ=0)',
+                'title': 'MQ0',
+                'description': '% Reads that are ambiguously placed (MQ=0)',
                 'max': 100,
                 'min': 0,
                 'suffix': '%',
                 'scale': 'OrRd',
                 'hidden': True
             }
-            stats_headers['non-primary_alignments'] = {
-                'title': 'Non-primary'.format(config.read_count_prefix),
-                'description': 'Non-primary alignments ({})'.format(config.read_count_desc),
-                'min': 0,
-                'scale': 'PuBu',
-                'modify': lambda x: x * config.read_count_multiplier,
-                'shared_key': 'read_count',
-                'format': self.read_format,
-            }
             stats_headers['raw_total_sequences'] = {
-                'title': 'Total seqs'.format(config.read_count_prefix),
+                'title': 'Reads'.format(config.read_count_prefix),
                 'description': 'Total sequences in the bam file ({})'.format(config.read_count_desc),
                 'min': 0,
                 'modify': lambda x: x * config.read_count_multiplier,
