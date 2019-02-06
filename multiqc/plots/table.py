@@ -308,12 +308,16 @@ def make_table (dt):
     t_row_keys = list(t_rows.keys())
     try:
         reference_samples = config.umccr.get('reference_samples', [])
+        tumor_sample = config.umccr.get('tumor_sample')
+        normal_sample = config.umccr.get('normal_sample')
     except:
-        reference_samples = []
-    if reference_samples:  # we want the reference samples to go to the end
-        sample_t_row_keys = sorted([r for r in t_row_keys if r not in reference_samples])
-        ref_t_row_keys = [r for r in reference_samples if r in t_row_keys]
-        t_row_keys = sample_t_row_keys + ref_t_row_keys
+        pass
+    else:
+        # We want to show in order 1. tumor 2. normal 3. reference samples
+        main_samples = [r for r in [tumor_sample, normal_sample] if r in t_row_keys]
+        ref_samples = [r for r in reference_samples if r in t_row_keys]
+        orther_samples = [r for r in t_row_keys if r not in reference_samples + main_samples]
+        t_row_keys = main_samples + orther_samples + ref_samples
 
     for s_name in t_row_keys:
         # Hide the row if all cells are empty or hidden
