@@ -178,7 +178,8 @@ class MultiqcModule(BaseMultiqcModule):
         }
         headers['predicted_sex_sex_check'] = {
             'title': 'Sex',
-            'description': 'Predicted sex'
+            'description': 'Predicted sex',
+            'scale': 'Set2',
         }
         self.general_stats_addcols(self.peddy_data, headers)
 
