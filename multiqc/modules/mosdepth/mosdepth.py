@@ -80,7 +80,7 @@ class MultiqcModule(BaseMultiqcModule):
             self.add_section(
                 name='Coverage distribution',
                 anchor='mosdepth-coverage-dist',
-                description='Distribution of the number of locations in the reference genome with a given depth of coverage',
+                description='Distribution of the percentage of the reference genome with a given depth of coverage',
                 helptext=genome_fraction_helptext,
                 plot=linegraph.plot(dist_data, {
                     'id': 'mosdepth-coverage-dist-id',
@@ -96,13 +96,13 @@ class MultiqcModule(BaseMultiqcModule):
             self.add_section(
                 name='Coverage plot',
                 anchor='mosdepth-coverage-cov',
-                description='Number of locations in the reference genome with a given depth of coverage',
+                description='Percentage of the reference genome with a given depth of coverage',
                 helptext=coverage_histogram_helptext,
                 plot=linegraph.plot(cov_data, {
                     'id': 'mosdepth-coverage-plot-id',
                     'xlab': 'Coverage (X)',
                     'ylab': '% bases in genome/regions covered at X reads',
-                    'ymax': 100,
+                    'ymax': ymax,
                     'xmax': xmax,
                     'tt_label': '<b>{point.x}X</b>: {point.y:.2f}%',
                     'smooth_points': 500,
