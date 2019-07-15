@@ -1,3 +1,4 @@
+from __future__ import division
 import json
 import logging
 import operator
@@ -10,6 +11,8 @@ from multiqc.plots import bargraph, table
 from multiqc.modules.base_module import BaseMultiqcModule
 
 log = logging.getLogger(__name__)
+
+GENOME_SIZE = 3200000000
 
 class MultiqcModule(BaseMultiqcModule):
     def __init__(self):
@@ -25,7 +28,7 @@ class MultiqcModule(BaseMultiqcModule):
         # Gather data from all json files
         self.bcl2fastq_data = dict()
         for myfile in self.find_log_files('bcl2fastq'):
-            self.parse_file_as_json(myfile)
+            self.bcl2fastq_data = self.parse_file_as_json(myfile)
 
         # Collect counts by lane and sample (+source_files)
         self.bcl2fastq_bylane = dict()
@@ -139,16 +142,19 @@ class MultiqcModule(BaseMultiqcModule):
             )
         )
 
-    def parse_file_as_json(self, myfile):
+    @staticmethod
+    def parse_file_as_json(myfile):
+        bcl2fastq_data = dict()
+
         try:
             content = json.loads(myfile["f"])
         except ValueError:
             log.warning('Could not parse file as json: {}'.format(myfile["fn"]))
             return
         runId = content["RunId"]
-        if runId not in self.bcl2fastq_data:
-            self.bcl2fastq_data[runId] = dict()
-        run_data = self.bcl2fastq_data[runId]
+        if runId not in bcl2fastq_data:
+            bcl2fastq_data[runId] = dict()
+        run_data = bcl2fastq_data[runId]
         for conversionResult in content.get("ConversionResults", []):
             l = conversionResult["LaneNumber"]
             lane = 'L{}'.format(conversionResult["LaneNumber"])
@@ -160,11 +166,9 @@ class MultiqcModule(BaseMultiqcModule):
                 "perfectIndex": 0,
                 "samples": dict(),
                 "yieldQ30": 0,
+                "depth": .0,
                 "qscore_sum": 0
             }
-            # simplify the population of dictionaries
-            rlane = run_data[lane]
-
             # Add undetermined barcodes
             unknown_barcode = dict()
             for lane_data in content.get("UnknownBarcodes", list()):
@@ -186,36 +190,40 @@ class MultiqcModule(BaseMultiqcModule):
                     "perfectIndex": 0,
                     "filename": os.path.join(myfile['root'], myfile["fn"]),
                     "yieldQ30": 0,
-                    "qscore_sum": 0
+                    "depth": .0,
+                    "qscore_sum": 0,
                 }
-                # simplify the population of dictionaries
-                lsample = run_data[lane]["samples"][sample]
                 for r in range(1,5):
-                        lsample["R{}_yield".format(r)] = 0
-                        lsample["R{}_Q30".format(r)] = 0
-                        lsample["R{}_trimmed_bases".format(r)] = 0
-                rlane["total"] += demuxResult["NumberReads"]
-                rlane["total_yield"] += demuxResult["Yield"]
-                lsample["total"] += demuxResult["NumberReads"]
-                lsample["total_yield"] += demuxResult["Yield"]
+                    run_data[lane]["samples"][sample]["R{}_yield".format(r)] = 0
+                    run_data[lane]["samples"][sample]["R{}_Q30".format(r)] = 0
+                    run_data[lane]["samples"][sample]["R{}_trimmed_bases".format(r)] = 0
+                run_data[lane]["total"] += demuxResult["NumberReads"]
+                run_data[lane]["total_yield"] += demuxResult["Yield"]
+                run_data[lane]["samples"][sample]["total"] += demuxResult["NumberReads"]
+                run_data[lane]["samples"][sample]["total_yield"] += demuxResult["Yield"]
                 for indexMetric in demuxResult.get("IndexMetrics", []):
-                    rlane["perfectIndex"] += indexMetric["MismatchCounts"]["0"]
-                    lsample["perfectIndex"] += indexMetric["MismatchCounts"]["0"]
+                    run_data[lane]["perfectIndex"] += indexMetric["MismatchCounts"]["0"]
+                    run_data[lane]["samples"][sample]["perfectIndex"] += indexMetric["MismatchCounts"]["0"]
                 for readMetric in demuxResult.get("ReadMetrics", []):
                     r = readMetric["ReadNumber"]
-                    rlane["yieldQ30"] += readMetric["YieldQ30"]
-                    rlane["qscore_sum"] += readMetric["QualityScoreSum"]
-                    lsample["yieldQ30"] += readMetric["YieldQ30"]
-                    lsample["qscore_sum"] += readMetric["QualityScoreSum"]
-                    lsample["R{}_yield".format(r)] += readMetric["Yield"]
-                    lsample["R{}_Q30".format(r)] += readMetric["YieldQ30"]
-                    lsample["R{}_trimmed_bases".format(r)] += readMetric["TrimmedBases"]
+                    run_data[lane]["yieldQ30"] += readMetric["YieldQ30"]
+                    run_data[lane]["depth"] += run_data[lane]["yieldQ30"] / GENOME_SIZE
+                    run_data[lane]["qscore_sum"] += readMetric["QualityScoreSum"]
+                    run_data[lane]["samples"][sample]["yieldQ30"] += readMetric["YieldQ30"]
+                    run_data[lane]["samples"][sample]["depth"] += readMetric["YieldQ30"] / GENOME_SIZE
+                    run_data[lane]["samples"][sample]["qscore_sum"] += readMetric["QualityScoreSum"]
+                    run_data[lane]["samples"][sample]["R{}_yield".format(r)] += readMetric["Yield"]
+                    run_data[lane]["samples"][sample]["R{}_Q30".format(r)] += readMetric["YieldQ30"]
+                    run_data[lane]["samples"][sample]["R{}_trimmed_bases".format(r)] += readMetric["TrimmedBases"]
                 # Remove unpopulated read keys
                 for r in range(1,5):
-                    if not lsample["R{}_yield".format(r)] and not lsample["R{}_Q30".format(r)] and not lsample["R{}_trimmed_bases".format(r)]:
-                        lsample.pop("R{}_yield".format(r))
-                        lsample.pop("R{}_Q30".format(r))
-                        lsample.pop("R{}_trimmed_bases".format(r))
+                    if not run_data[lane]["samples"][sample]["R{}_yield".format(r)] and \
+                       not run_data[lane]["samples"][sample]["R{}_Q30".format(r)] and \
+                       not run_data[lane]["samples"][sample]["R{}_trimmed_bases".format(r)]:
+                        run_data[lane]["samples"][sample].pop("R{}_yield".format(r))
+                        run_data[lane]["samples"][sample].pop("R{}_Q30".format(r))
+                        run_data[lane]["samples"][sample].pop("R{}_trimmed_bases".format(r))
+
             undeterminedYieldQ30 = 0
             undeterminedQscoreSum = 0
             undeterminedTrimmedBases = 0
@@ -229,6 +237,7 @@ class MultiqcModule(BaseMultiqcModule):
                     "total_yield": conversionResult["Undetermined"]["Yield"],
                     "perfectIndex": 0,
                     "yieldQ30": undeterminedYieldQ30,
+                    "depth": None,
                     "qscore_sum": undeterminedQscoreSum,
                     "trimmed_bases": undeterminedTrimmedBases
                 }
@@ -265,6 +274,8 @@ class MultiqcModule(BaseMultiqcModule):
                 except ZeroDivisionError:
                     sample["mean_qscore"] = "NA"
 
+        return bcl2fastq_data
+
     def split_data_by_lane_and_sample(self):
         for run_id, r in self.bcl2fastq_data.items():
             for lane_id, lane in r.items():
@@ -275,6 +286,7 @@ class MultiqcModule(BaseMultiqcModule):
                     "perfectIndex": lane["perfectIndex"],
                     "undetermined": lane["samples"].get("undetermined", {}).get("total", "NA"),
                     "yieldQ30": lane["yieldQ30"],
+                    "depth": lane["depth"],
                     "qscore_sum": lane["qscore_sum"],
                     "percent_Q30": lane["percent_Q30"],
                     "percent_perfectIndex": lane["percent_perfectIndex"],
@@ -288,8 +300,10 @@ class MultiqcModule(BaseMultiqcModule):
                             "total_yield": 0,
                             "perfectIndex": 0,
                             "yieldQ30": 0,
-                            "qscore_sum": 0
+                            "qscore_sum": 0,
                         }
+                        if sample_id != "undetermined":
+                            self.bcl2fastq_bysample[sample_id]["depth"] = .0
                         for r in range(1,5):
                                 self.bcl2fastq_bysample[sample_id]["R{}_yield".format(r)] = 0
                                 self.bcl2fastq_bysample[sample_id]["R{}_Q30".format(r)] = 0
@@ -321,6 +335,7 @@ class MultiqcModule(BaseMultiqcModule):
                     except ZeroDivisionError:
                         s["mean_qscore"] = "NA"
                     if sample_id != "undetermined":
+                        s["depth"] += sample["depth"]
                         if sample_id not in self.source_files:
                             self.source_files[sample_id] = []
                         self.source_files[sample_id].append(sample["filename"])
@@ -373,6 +388,9 @@ class MultiqcModule(BaseMultiqcModule):
                 "total": sample["total"],
                 "perfectPercent": perfect_percent,
             }
+            if sample_id != "undetermined":
+                data[sample_id]["depth"] = sample["depth"]
+
             for r in range(1,5):
                 try:
                     data[sample_id]["percent_R{}_Q30".format(r)] = percent_R_Q30[r]
@@ -384,6 +402,13 @@ class MultiqcModule(BaseMultiqcModule):
         if config.read_count_multiplier == 1:
             read_format = '{:,.0f}'
         headers = OrderedDict()
+        headers['depth'] = {
+            'title': 'Est. depth'.format(config.read_count_prefix),
+            'description': 'Estimated depth based on the number of bases with quality score greater or equal to Q30',
+            'min': 0,
+            'suffix': 'X',
+            'scale': 'BuPu'
+        }
         headers['total'] = {
             'title': '{} Clusters'.format(config.read_count_prefix),
             'description': 'Total number of reads for this sample as determined by bcl2fastq demultiplexing ({})'.format(config.read_count_desc),
@@ -442,6 +467,13 @@ class MultiqcModule(BaseMultiqcModule):
     def lane_stats_table(self):
         """ Return a table with overview stats for each bcl2fastq lane for a single flow cell """
         headers = OrderedDict()
+        headers['depth'] = {
+            'title': 'Est. depth'.format(config.read_count_prefix),
+            'description': 'Estimated depth based on the number of bases with quality score greater or equal to Q30',
+            'min': 0,
+            'suffix': 'X',
+            'scale': 'BuPu'
+        }
         headers['total_yield'] = {
             'title': '{} Total Yield'.format(config.base_count_prefix),
             'description': 'Number of bases ({})'.format(config.base_count_desc),
