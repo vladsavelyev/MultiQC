@@ -14,6 +14,11 @@ log = logging.getLogger(__name__)
 
 GENOME_SIZE = 3200000000
 
+read_format = '{:,.1f} ' + config.read_count_prefix
+if config.read_count_multiplier == 1:
+    read_format = '{:,.0f}'
+
+
 class MultiqcModule(BaseMultiqcModule):
     def __init__(self):
         # Initialise the parent object
@@ -295,7 +300,6 @@ class MultiqcModule(BaseMultiqcModule):
         bcl2fastq_bysample_lane = defaultdict(dict)
         source_files = dict()
 
-
         sample_metrics = [
             "total",
             "total_yield",
@@ -324,8 +328,8 @@ class MultiqcModule(BaseMultiqcModule):
                         all_lane_stats[m] += val
 
                 if len(run_datas) == 1:
-                    all_lane_stats["undetermined"] += lane_data["samples"].get("undetermined", {}).get("total", "NA")
-                    all_lane_stats["unknown_barcodes"] += MultiqcModule.get_unknown_barcodes(lane_data['unknown_barcodes'])
+                    all_lane_stats["undetermined"] = lane_data["samples"].get("undetermined", {}).get("total", "NA")
+                    all_lane_stats["unknown_barcodes"] = MultiqcModule.get_unknown_barcodes(lane_data['unknown_barcodes'])
 
                 ################
                 ### Building per-sample-lane stats
@@ -431,6 +435,7 @@ class MultiqcModule(BaseMultiqcModule):
             data[sample_id] = {
                 "yieldQ30": sample["yieldQ30"],
                 "total": sample["total"],
+                "total_yield": sample["total_yield"],
                 "perfectPercent": perfect_percent,
             }
             if sample_id != "undetermined":
@@ -443,42 +448,55 @@ class MultiqcModule(BaseMultiqcModule):
                 except KeyError:
                     pass
 
-        read_format = '{:,.1f} ' + config.read_count_prefix
-        if config.read_count_multiplier == 1:
-            read_format = '{:,.0f}'
         headers = OrderedDict()
         headers['depth'] = {
             'title': 'Est. depth'.format(config.read_count_prefix),
-            'description': 'Estimated depth based on the number of bases with quality score greater or equal to Q30',
+            'description': 'Estimated depth based on the number of bases with quality score greater or equal to Q30, assuming human whole genome',
             'min': 0,
             'suffix': 'X',
             'scale': 'BuPu'
         }
         headers['total'] = {
-            'title': '{} Clusters'.format(config.read_count_prefix),
-            'description': 'Total number of reads for this sample as determined by bcl2fastq demultiplexing ({})'.format(config.read_count_desc),
+            'title': 'Clusters'.format(config.read_count_prefix),
+            'description': 'Total number of clusters (read pairs) for this sample as determined by bcl2fastq demultiplexing ({})'.format(config.read_count_desc),
             'scale': 'Blues',
-            'modify': lambda x: x * 2 * config.read_count_multiplier,
+            'modify': lambda x: x * config.read_count_multiplier,
             'shared_key': 'read_count',
             'format': read_format,
         }
+        headers['total_yield'] = {
+            'title': 'Total Yield ({})'.format(config.base_count_prefix),
+            'description': 'Total number of sequenced bases for this sample ({})'.format(config.base_count_desc),
+            'scale': 'Greens',
+            'modify': lambda x: x * config.base_count_multiplier,
+            'shared_key': 'base_count',
+            'format': '{:,.1f}',
+        }
         headers['yieldQ30'] = {
-            'title': '&ge; Q30',
+            'title': 'Yield &ge; Q30 (Mb)'.format(config.base_count_prefix),
             'description': 'Number of bases with a Phred score of 30 or higher ({})'.format(config.base_count_desc),
             'scale': 'Greens',
             'modify': lambda x: x * config.base_count_multiplier,
             'shared_key': 'base_count',
-            'format': '{:,.1f}&nbsp;' + config.base_count_prefix,
+            'format': '{:,.1f}',
         }
         # If no data for a column, header will be automatically ignored
         for r in range(1,5):
+            hideCol = True
+            for s in data:
+                try:
+                    if float(data[s]["percent_R{}_Q30".format(r)]) > 0:
+                        hideCol = False
+                except KeyError:
+                    pass
             headers['percent_R{}_Q30'.format(r)] = {
-                'title': '% R{} Yield &ge; Q30'.format(r),
+                'title': 'R{} Yield &ge; Q30'.format(r),
                 'description': 'Percent of bases in R{} with a Phred score of 30 or higher'.format(r),
                 'scale': 'RdYlGn',
                 'max': 100,
                 'min': 0,
-                'suffix': '%'
+                'suffix': '%',
+                'hidden': hideCol
             }
         headers['perfectPercent'] = {
             'title': 'Perf Idx',
@@ -519,20 +537,24 @@ class MultiqcModule(BaseMultiqcModule):
             'suffix': 'X',
             'scale': 'BuPu'
         }
-        headers['total_yield'] = {
-            'title': '{} Total Yield'.format(config.base_count_prefix),
-            'description': 'Number of bases ({})'.format(config.base_count_desc),
-            'scale': 'Greens',
-            'shared_key': 'base_count'
-        }
         headers['total'] = {
-            'title': '{} Total Clusters'.format(config.read_count_prefix),
-            'description': 'Total number of clusters for this lane ({})'.format(config.read_count_desc),
+            'title': 'Clusters'.format(config.read_count_prefix),
+            'description': 'Total number of clusters (read pairs) for this lane ({})'.format(config.read_count_desc),
             'scale': 'Blues',
-            'shared_key': 'read_count'
+            'modify': lambda x: x * config.read_count_multiplier,
+            'shared_key': 'read_count',
+            'format': read_format,
+        }
+        headers['total_yield'] = {
+            'title': 'Total Yield'.format(config.base_count_prefix),
+            'description': 'Tota number of bases yielded for this lane ({})'.format(config.base_count_desc),
+            'scale': 'Greens',
+            'modify': lambda x: x * config.base_count_multiplier,
+            'shared_key': 'base_count',
+            'format': '{:,.1f}&nbsp;' + config.base_count_prefix,
         }
         headers['percent_Q30'] = {
-            'title': '% bases &ge; Q30',
+            'title': 'Bases &ge; Q30',
             'description': 'Percentage of bases with greater than or equal to Q30 quality score',
             'suffix': '%',
             'max': 100,
@@ -546,7 +568,7 @@ class MultiqcModule(BaseMultiqcModule):
             'scale': 'Spectral'
         }
         headers['percent_perfectIndex'] = {
-            'title': '% Perfect Index',
+            'title': 'Perfect Index',
             'description': 'Percent of reads with perfect index (0 mismatches)',
             'max': 100,
             'min': 0,
