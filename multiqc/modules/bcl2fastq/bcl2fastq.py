@@ -13,6 +13,7 @@ from multiqc.modules.base_module import BaseMultiqcModule
 log = logging.getLogger(__name__)
 
 GENOME_SIZE = 3200000000
+EXOME_SIZE  = 320000000
 
 read_format = '{:,.1f} ' + config.read_count_prefix
 if config.read_count_multiplier == 1:
@@ -20,6 +21,14 @@ if config.read_count_multiplier == 1:
 
 
 class MultiqcModule(BaseMultiqcModule):
+    sample_metrics = [
+        "total",
+        "total_yield",
+        "perfectIndex",
+        "yieldQ30",
+        "qscore_sum",
+    ]
+
     def __init__(self):
         # Initialise the parent object
         super(MultiqcModule, self).__init__(
@@ -41,21 +50,22 @@ class MultiqcModule(BaseMultiqcModule):
             raise UserWarning
 
         # Make sure all data belong to one sequencer run
-        datas_by_run = defaultdict(list)
-        for data in bcl2fastq_datas:
-            for run_id, run_data in data.items():
-                datas_by_run[run_id].append(run_data)
-        if len(datas_by_run) > 1:
+        datas_by_sequencerrun = defaultdict(list)
+        for bcl2fastq_data in bcl2fastq_datas:
+            for sequencer_run_id, sequencer_run_data in bcl2fastq_data.items():
+                datas_by_sequencerrun[sequencer_run_id].append(sequencer_run_data)
+        if len(datas_by_sequencerrun) > 1:
             log.error("Multiple runs found in files", found_files)
             raise UserWarning
-        run_id, run_datas = list(datas_by_run.items())[0]
+        sequencer_run_id, bcl2fastq_runs = list(datas_by_sequencerrun.items())[0]
 
         if len(bcl2fastq_datas) > 1:
-            log.warning("Warning: multiple bcl2fastq runs detected. They will be merged, undetermined information will be dropped.")
+            log.warning("Warning: multiple bcl2fastq runs detected. "
+                        "They will be merged, undetermined information will be dropped.")
 
         # Collect counts by lane and sample (+source_files)
         bcl2fastq_bylane, bcl2fastq_bysample, bcl2fastq_bysample_lane, source_files \
-            = MultiqcModule.split_data_by_lane_and_sample(run_id, run_datas)
+            = MultiqcModule.split_data_by_lane_and_sample(sequencer_run_id, bcl2fastq_runs)
 
         # Filter to strip out ignored sample names
         bcl2fastq_bylane = self.ignore_samples(bcl2fastq_bylane)
@@ -294,109 +304,154 @@ class MultiqcModule(BaseMultiqcModule):
         return bcl2fastq_data
 
     @staticmethod
-    def split_data_by_lane_and_sample(run_id, run_datas):
-        bcl2fastq_bylane = defaultdict(lambda: defaultdict(int))
-        bcl2fastq_bysample = dict()
-        bcl2fastq_bysample_lane = defaultdict(dict)
+    def _process_run_lane_data(lane_data, uniq_lane_id, is_single_run=True):
+        processed_lane_data = defaultdict(int)
+        bysample_lane_data = defaultdict(dict)
         source_files = dict()
+        processed_run_data = {  # sums up everything, including undetermined
+            m: sum([raw_s[m] for raw_s in lane_data["samples"].values()])
+            for m in [
+                "total",
+                "total_yield",
+            ]
+        }
 
-        sample_metrics = [
-            "total",
-            "total_yield",
-            "perfectIndex",
-            "yieldQ30",
-            "qscore_sum",
-        ]
+        # all_lane_stats = bcl2fastq_bylane[uniq_lane_id]
+        for m in [
+                "total",
+                "total_yield",
+                "perfectIndex",
+                "yieldQ30",
+                "qscore_sum",
+                "percent_Q30",
+                "percent_perfectIndex",
+                "mean_qscore",
+                "unknown_barcodes",
+            ]:
+            val = lane_data[m]
+            if isinstance(val, int) or isinstance(val, float):
+                processed_lane_data[m] += val
 
-        for run_data in run_datas:
-            for lane_id, lane_data in run_data.items():
-                uniq_lane_id = MultiqcModule.prepend_runid(run_id, lane_id)
-                all_lane_stats = bcl2fastq_bylane[uniq_lane_id]
-                for m in [
-                        "total",
-                        "total_yield",
-                        "perfectIndex",
-                        "yieldQ30",
-                        "qscore_sum",
-                        "percent_Q30",
-                        "percent_perfectIndex",
-                        "mean_qscore",
-                        "unknown_barcodes",
-                    ]:
-                    val = lane_data[m]
-                    if isinstance(val, int) or isinstance(val, float):
-                        all_lane_stats[m] += val
+        if is_single_run == 1:
+            processed_lane_data["undetermined"] = lane_data["samples"].get("undetermined", {}).get("total", "NA")
+            processed_lane_data["unknown_barcodes"] = MultiqcModule.get_unknown_barcodes(lane_data['unknown_barcodes'])
 
-                if len(run_datas) == 1:
-                    all_lane_stats["undetermined"] = lane_data["samples"].get("undetermined", {}).get("total", "NA")
-                    all_lane_stats["unknown_barcodes"] = MultiqcModule.get_unknown_barcodes(lane_data['unknown_barcodes'])
+        ################
+        ### Building per-sample-lane stats
+        for sample_id, raw_s in lane_data["samples"].items():
+            s = dict()
+            for m in MultiqcModule.sample_metrics:
+                s[m] = raw_s[m]
 
-                ################
-                ### Building per-sample-lane stats
-                for sample_id, raw_s in lane_data["samples"].items():
-                    s = dict()
-                    for m in sample_metrics:
-                        s[m] = raw_s[m]
+            # Undetermined samples did not have R1 and R2 information
+            for r in range(1, 5):
+                for m in ["yield", "Q30", "trimmed_bases"]:
+                    try:
+                        s["R{}_{}".format(r, m)] = raw_s["R{}_{}".format(r, m)]
+                    except KeyError:
+                        pass
 
-                    # Undetermined samples did not have R1 and R2 information
-                    for r in range(1, 5):
-                        for m in ["yield", "Q30", "trimmed_bases"]:
-                            try:
-                                s["R{}_{}".format(r, m)] = raw_s["R{}_{}".format(r, m)]
-                            except KeyError:
-                                pass
+            if sample_id != "undetermined":
+                total_size = GENOME_SIZE
+                # if 'rna' in sample_id:
+                #     total_size = EXOME_SIZE
+                s["depth"] = s["yieldQ30"] / total_size
 
-                    if sample_id != "undetermined":
-                        s["depth"] = s["yieldQ30"] / GENOME_SIZE
+            if sample_id != "undetermined":
+                if sample_id not in source_files:
+                    source_files[sample_id] = []
+                source_files[sample_id].append(raw_s["filename"])
 
-                    if sample_id != "undetermined":
-                        if sample_id not in source_files:
-                            source_files[sample_id] = []
-                        source_files[sample_id].append(raw_s["filename"])
+            bysample_lane_data[sample_id][uniq_lane_id] = s
 
-                    bcl2fastq_bysample_lane[sample_id][uniq_lane_id] = s
+        return processed_run_data, processed_lane_data, bysample_lane_data, source_files
+
+    @staticmethod
+    def _process_sample_data(sample_data_by_lane):
+        sample_data = defaultdict(int)
+        for lane_id, sample_lane_data in sample_data_by_lane.items():
+            for m, val in sample_lane_data.items():
+                if isinstance(val, int) or isinstance(val, float):
+                    sample_data[m] += val
+
+            s = sample_data  # to populate
+            try:
+                s["percent_Q30"] = (float(sample_lane_data["yieldQ30"]) / float(s["total_yield"])) * 100.0
+            except ZeroDivisionError:
+                s["percent_Q30"] = "NA"
+            try:
+                s["percent_perfectIndex"] = (float(s["perfectIndex"]) / float(s["total"])) * 100.0
+            except ZeroDivisionError:
+                s["percent_perfectIndex"] = "NA"
+            try:
+                s["mean_qscore"] = (float(s["qscore_sum"]) / float(s["total_yield"]))
+            except ZeroDivisionError:
+                s["mean_qscore"] = "NA"
+
+            # Remove unpopulated read keys
+            for r in range(1, 5):
+                try:
+                    if not s["R{}_yield".format(r)] and \
+                       not s["R{}_Q30".format(r)] and \
+                       not s["R{}_trimmed_bases".format(r)]:
+                        s.pop("R{}_yield".format(r))
+                        s.pop("R{}_Q30".format(r))
+                        s.pop("R{}_trimmed_bases".format(r))
+                except KeyError:
+                    pass
+        return sample_data
+
+    @staticmethod
+    def split_data_by_lane_and_sample(sequencer_run_id, bcl2fastq_runs):
+        data_bylane = defaultdict(lambda: defaultdict(int))
+        data_bysample_bylane = defaultdict(dict)
+        data_bysample = dict()
+        source_files = dict()
+        total_run_data = defaultdict(int)  # based on single bcl2fastq run (we assume all runs belong to the same sequencer run)
+
+        for bcl2fastqw_run_i, bcl2fastq_run_data in enumerate(bcl2fastq_runs):
+            for lane_id, lane_data in bcl2fastq_run_data.items():
+                unique_lane_id = MultiqcModule.prepend_runid(sequencer_run_id, lane_id)
+                processed_run_lane_data, processed_lane_data, new_bysample_lane_data, new_source_files = \
+                    MultiqcModule._process_run_lane_data(lane_data, unique_lane_id,
+                                                         is_single_run=len(bcl2fastq_runs) == 1)
+
+                if bcl2fastqw_run_i == 0:
+                    for m, val in processed_run_lane_data.items():
+                        total_run_data[m] += val
+
+                data_bylane[unique_lane_id] = processed_lane_data
+                for s, ld in new_bysample_lane_data.items():
+                    data_bysample_bylane[s].update(ld)
+                source_files.update(new_source_files)
 
             ################
             ### Adding up to the sample-level stats
-            for sample_id, sample_data in bcl2fastq_bysample_lane.items():
-                if sample_id == "undetermined" and len(run_datas) > 1:
-                    continue  # Skipping undetermined for multiple bcl2fastq runs for now.
-                              # In the future, we should calculate it properly,
-                              # assuming that all bcl2fastq runs make up to a full sequencer run
+            for sample_id, sample_data_bylane in data_bysample_bylane.items():
+                if sample_id == 'undetermined' and len(bcl2fastq_runs) > 1:
+                    # Undetermined stats for multiple bcl2fastq runs are off as they don't consider other runs
+                    # recalculating them, assuming that all bcl2fastq runs make up to a full sequencer run
+                    continue
 
-                bcl2fastq_bysample[sample_id] = defaultdict(int)
-                for lane_id, sample_lane_data in sample_data.items():
-                    for m, val in sample_lane_data.items():
-                        if isinstance(val, int) or isinstance(val, float):
-                            bcl2fastq_bysample[sample_id][m] += val
+                data_bysample[sample_id] = MultiqcModule._process_sample_data(sample_data_bylane)
 
-                    s = bcl2fastq_bysample[sample_id]  # to populate
-                    try:
-                        s["percent_Q30"] = (float(sample_lane_data["yieldQ30"]) / float(s["total_yield"])) * 100.0
-                    except ZeroDivisionError:
-                        s["percent_Q30"] = "NA"
-                    try:
-                        s["percent_perfectIndex"] = (float(s["perfectIndex"]) / float(s["total"])) * 100.0
-                    except ZeroDivisionError:
-                        s["percent_perfectIndex"] = "NA"
-                    try:
-                        s["mean_qscore"] = (float(s["qscore_sum"]) / float(s["total_yield"]))
-                    except ZeroDivisionError:
-                        s["mean_qscore"] = "NA"
+        # #############
+        # ### Summarising total run data to properly calculate undetermined and percentages
+        determined = {
+            m: sum(data[m] for sid, data in data_bysample.items() if sid != 'undetermined')
+            for m in total_run_data.keys()
+        }
+        undetermined = {m: total_run_data[m] - determined[m] for m in determined.keys()}
+        if len(bcl2fastq_runs) > 1:
+            data_bysample['undetermined'] = undetermined
+        # else:
+        #     assert data_bysample['undetermined']['total'] == undetermined['total'], (data_bysample['undetermined'], undetermined)
 
-                    # Remove unpopulated read keys
-                    for r in range(1, 5):
-                        try:
-                            if not s["R{}_yield".format(r)] and \
-                               not s["R{}_Q30".format(r)] and \
-                               not s["R{}_trimmed_bases".format(r)]:
-                                s.pop("R{}_yield".format(r))
-                                s.pop("R{}_Q30".format(r))
-                                s.pop("R{}_trimmed_bases".format(r))
-                        except KeyError:
-                            pass
+        for sample_id, sample_data in data_bysample.items():
+            sample_data['clusters_pct'] = sample_data['total'] / total_run_data['total'] * 100.0
+            sample_data['yield_pct'] = sample_data['total_yield'] / total_run_data['total_yield'] * 100.0
 
-        return bcl2fastq_bylane, bcl2fastq_bysample, bcl2fastq_bysample_lane, source_files
+        return data_bylane, data_bysample, data_bysample_bylane, source_files
 
     @staticmethod
     def get_unknown_barcodes(lane_unknown_barcode):
@@ -427,19 +482,26 @@ class MultiqcModule(BaseMultiqcModule):
                     percent_R_Q30[r] = '0.0'
                 except KeyError:
                     pass
-            try:
-                perfect_percent = '{0:.1f}'.format(float(100.0 * sample["perfectIndex"] / sample["total"]))
-            except ZeroDivisionError:
-                perfect_percent = '0.0'
 
             data[sample_id] = {
-                "yieldQ30": sample["yieldQ30"],
-                "total": sample["total"],
-                "total_yield": sample["total_yield"],
-                "perfectPercent": perfect_percent,
+                'total': sample['total'],
+                'total_yield': sample['total_yield'],
+                'clusters_pct': sample['clusters_pct'],
+                'yield_pct': sample['yield_pct'],
             }
-            if sample_id != "undetermined":
-                data[sample_id]["depth"] = sample["depth"]
+
+            if 'perfectIndex' in sample:
+                try:
+                    perfect_percent = '{0:.1f}'.format(float(100.0 * sample["perfectIndex"] / sample["total"]))
+                except ZeroDivisionError:
+                    perfect_percent = '0.0'
+                data[sample_id]['perfectIndex'] = perfect_percent
+
+            if 'yieldQ30' in sample:
+                data[sample_id]['yieldQ30'] = sample['yieldQ30']
+
+            if sample_id != 'undetermined':
+                data[sample_id]['depth'] = sample['depth']
 
             for r in range(1,5):
                 try:
@@ -451,7 +513,9 @@ class MultiqcModule(BaseMultiqcModule):
         headers = OrderedDict()
         headers['depth'] = {
             'title': 'Est. depth'.format(config.read_count_prefix),
-            'description': 'Estimated depth based on the number of bases with quality score greater or equal to Q30, assuming human whole genome',
+            'description': 'Estimated depth based on the number of bases with quality score greater or equal to Q30, '
+                           'assuming human whole genome',
+                           # ' (or exome, if the sample id contains "rna" substring)',
             'min': 0,
             'suffix': 'X',
             'scale': 'BuPu'
@@ -464,6 +528,15 @@ class MultiqcModule(BaseMultiqcModule):
             'shared_key': 'read_count',
             'format': read_format,
         }
+        headers['clusters_pct'] = {
+            'title': 'Clust. %',
+            'description': 'Percentage of clusters (read pairs) for this sample in the run, '
+                           'as determined by bcl2fastq demultiplexing',
+            'scale': 'RdYlGn',
+            'max': 100,
+            'min': 0,
+            'suffix': '%'
+        }
         headers['total_yield'] = {
             'title': 'Total Yield ({})'.format(config.base_count_prefix),
             'description': 'Total number of sequenced bases for this sample ({})'.format(config.base_count_desc),
@@ -472,8 +545,16 @@ class MultiqcModule(BaseMultiqcModule):
             'shared_key': 'base_count',
             'format': '{:,.1f}',
         }
+        headers['yield_pct'] = {
+            'title': 'Yield %',
+            'description': 'Percentage of sequenced bases for this sample in this run',
+            'scale': 'RdYlGn',
+            'max': 100,
+            'min': 0,
+            'suffix': '%'
+        }
         headers['yieldQ30'] = {
-            'title': 'Yield &ge; Q30 (Mb)'.format(config.base_count_prefix),
+            'title': 'Yield &ge;Q30 (Mb)'.format(config.base_count_prefix),
             'description': 'Number of bases with a Phred score of 30 or higher ({})'.format(config.base_count_desc),
             'scale': 'Greens',
             'modify': lambda x: x * config.base_count_multiplier,
@@ -490,7 +571,7 @@ class MultiqcModule(BaseMultiqcModule):
                 except KeyError:
                     pass
             headers['percent_R{}_Q30'.format(r)] = {
-                'title': 'R{} Yield &ge; Q30'.format(r),
+                'title': 'R{} Yield &ge;Q30'.format(r),
                 'description': 'Percent of bases in R{} with a Phred score of 30 or higher'.format(r),
                 'scale': 'RdYlGn',
                 'max': 100,
@@ -517,11 +598,12 @@ class MultiqcModule(BaseMultiqcModule):
                     pass
             try:
                 headers['R{}_trimmed_bases'.format(r)] = {
-                    'title': '{} R{} trimmed'.format(config.base_count_prefix, r),
+                    'title': 'R{} trimmed'.format(r),
                     'description': 'Number of bases trimmed ({})'.format(config.base_count_desc),
                     'scale': 'RdYlBu',
                     'modify': lambda x: x * 0.000001,
-                    'hidden': hideCol
+                    'hidden': hideCol,
+                    'format': '{:,.1f} ' + config.base_count_prefix,
                 }
             except KeyError:
                 pass
@@ -591,13 +673,14 @@ class MultiqcModule(BaseMultiqcModule):
     @staticmethod
     def get_counts_bar_data_per_category(bcl2fastq_bysample):
         bar_data = {}
-        for key, value in bcl2fastq_bysample.items():
-            bar_data[key] = {
-                "perfect": value["perfectIndex"],
-                "imperfect": value["total"] - value["perfectIndex"],
-            }
-            if "undetermined" in value:
-                bar_data[key]["undetermined"] = value["undetermined"]
+        for sample_id, sample_data in bcl2fastq_bysample.items():
+            if 'perfectIndex' in sample_data:
+                bar_data[sample_id] = {
+                    "perfect": sample_data["perfectIndex"],
+                    "imperfect": sample_data["total"] - sample_data["perfectIndex"],
+                }
+                if "undetermined" in sample_data:
+                    bar_data[sample_id]["undetermined"] = sample_data["undetermined"]
         return bar_data
 
     @staticmethod
@@ -606,7 +689,8 @@ class MultiqcModule(BaseMultiqcModule):
         for sname, per_lane in bcl2fastq_bysample_lane.items():
             bar_data[sname] = {}
             for lane, stats in per_lane.items():
-                bar_data[sname][lane] = stats["perfectIndex"]
+                if 'perfectIndex' in stats:
+                    bar_data[sname][lane] = stats["perfectIndex"]
         return bar_data
 
     @staticmethod
