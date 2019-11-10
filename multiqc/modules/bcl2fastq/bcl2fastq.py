@@ -31,9 +31,29 @@ class Metrics:
         self.trimmed_bases = 0
         self.read_stats = defaultdict(int)
 
-        self.depth = None
-        self.reads_pct = None
-        self.bases_pct = None
+    def generate_metics_dict(self, total_stats):
+        data = {
+            'total': self.reads,
+            'total_yield': self.bases,
+            'clusters_pct': self.reads / total_stats.reads * 100.0,
+            'yield_pct': self.bases / total_stats.bases * 100.0,
+        }
+
+        if self.yield_q30:
+            data['yieldQ30'] = self.yield_q30
+            if self.bases > 0:
+                data['percent_Q30'] = float(self.yield_q30) / float(self.bases) * 100.0
+
+            data['depth'] = self.yield_q30 / GENOME_SIZE
+
+        if self.perfect_index and self.reads > 0:
+            data['percent_perfectIndex'] = '{0:.1f}'.format(float(100.0 * self.perfect_index / self.reads))
+
+        if self.qscore_sum and self.bases > 0:
+            data['mean_qscore'] = float(self.qscore_sum) / float(self.bases) * 100.0
+
+        return data
+
 
 class MultiqcModule(BaseMultiqcModule):
     def __init__(self):
@@ -69,18 +89,12 @@ class MultiqcModule(BaseMultiqcModule):
         #     raise UserWarning
         # sequencer_run_id, bcl2fastq_runs = list(datas_by_sequencerrun.items())[0]
 
+        source_path_per_sample = self._merge_bcl2fastq_runs(found_files)
+
         if len(found_files) > 1:
             log.warning("Warning: multiple bcl2fastq runs detected. "
                         "They will be merged, undetermined stats will recalculated.")
-
-        source_path_per_sample = self._merge_bcl2fastq_runs(found_files)
         self._recalculate_undetermined()
-        self._summarize_percentages()
-        self._calculate_depth()
-
-        # Collect counts by lane and sample (+source_files)
-        # bcl2fastq_bylane, bcl2fastq_bysample, bcl2fastq_bysample_lane, source_files \
-        #     = MultiqcModule.split_data_by_lane_and_sample(sequencer_run_id, bcl2fastq_runs)
 
         # Filter to strip out ignored sample names
         self.samples = self.ignore_samples(self.samples)
@@ -99,44 +113,36 @@ class MultiqcModule(BaseMultiqcModule):
                 section='bcl2fastq-bysample'
             )
 
-        # TODO: finish below
-
         # Add sample counts to general stats table
         samples_table = self._make_samples_table()
-        lanes_table = self._make_lanes_table()
-
         self.add_general_stats(samples_table)
+        self.write_data_file(samples_table, 'multiqc_bcl2fastq_bysample')
 
         # Add section for summary stats per flow cell
+        lanes_table = self._make_lanes_table()
         self.add_section (
-            name = 'Lane Statistics',
-            anchor = 'bcl2fastq-lanestats',
-            description = 'Statistics about each lane for each flowcell',
-            plot = self.lane_stats_table(lanes_table)
+            name='Lane Statistics',
+            anchor='bcl2fastq-lanestats',
+            description='Statistics about each lane for each flowcell',
+            plot=self.lane_stats_table(lanes_table)
         )
-
-        self.write_data_file(samples_table, 'multiqc_bcl2fastq_bysample')
-        self.write_data_file(
-            {str(k): lanes_table[k] for k in lanes_table.keys()},
-            'multiqc_bcl2fastq_bylane'
-        )
-
-        return
+        self.write_data_file(lanes_table, 'multiqc_bcl2fastq_bylane')
 
         # Add section for counts by lane
-        cats = OrderedDict()
-        cats["perfect"] = {'name': 'Perfect Index Reads'}
-        cats["imperfect"] = {'name': 'Mismatched Index Reads'}
-        cats["undetermined"] = {'name': 'Undetermined Reads'}
+        categories_readtype = OrderedDict()
+        categories_readtype['perfect'] = {'name': 'Perfect Index Reads'}
+        categories_readtype['imperfect'] = {'name': 'Mismatched Index Reads'}
+        categories_readtype['undetermined'] = {'name': 'Undetermined Reads'}
         self.add_section (
-            name = 'Clusters by lane',
-            anchor = 'bcl2fastq-bylane',
-            description = 'Number of reads per lane (with number of perfect index reads).',
-            helptext = """Perfect index reads are those that do not have a single mismatch.
+            name='Read clusters by lane',
+            anchor='bcl2fastq-bylane',
+            description='Number of read clusters (e.g. pairs) per lane, '
+                        'categorised as "perfect index", "mismatched index" or "undetermined".',
+            helptext="""Perfect index reads are those that do not have a single mismatch.
                 All samples of a lane are combined. Undetermined reads are treated as a third category.""",
-            plot = bargraph.plot(
-                self.get_counts_bar_data_per_category(bcl2fastq_bylane),
-                cats,
+            plot=bargraph.plot(
+                self.get_counts_bar_data_per_category(self.lanes, self.undetermined_by_lane),
+                categories_readtype,
                 {
                     'id': 'bcl2fastq_lane_counts',
                     'title': 'bcl2fastq: Clusters by lane',
@@ -147,24 +153,24 @@ class MultiqcModule(BaseMultiqcModule):
         )
 
         # Add section for counts by sample
-        # get cats for per-lane tab
-        lcats = set()
-        for s_name in bcl2fastq_bysample_lane:
-            lcats.update(bcl2fastq_bysample_lane[s_name].keys())
-        lcats = sorted(list(lcats))
-        self.add_section (
-            name = 'Clusters by sample',
-            anchor = 'bcl2fastq-bysample',
-            description = 'Number of reads per sample.',
-            helptext = """Perfect index reads are those that do not have a single mismatch.
+        # lcats = set()  # get cats for per-lane tab
+        # for lid, samples in self.sample_by_lane.items():
+        #     lcats.update(samples.keys())
+        # lcats = list(sorted(lcats))
+        categories_lanes = list(sorted(set(self.sample_by_lane.keys())))
+        self.add_section(
+            name='Clusters by sample',
+            anchor='bcl2fastq-bysample',
+            description='Number of reads per sample.',
+            helptext="""Perfect index reads are those that do not have a single mismatch.
                 All samples are aggregated across lanes combinned. Undetermined reads are ignored.
                 Undetermined reads are treated as a separate sample.""",
-            plot = bargraph.plot(
+            plot=bargraph.plot(
                 [
-                    MultiqcModule.get_counts_bar_data_per_category(bcl2fastq_bysample),
-                    MultiqcModule.get_perfect_counts_bar_data_per_lane(bcl2fastq_bysample_lane)
+                    MultiqcModule.get_counts_bar_data_per_category(self.samples),
+                    MultiqcModule.get_perfect_counts_bar_data_per_lane(self.sample_by_lane)
                 ],
-                [cats, lcats],
+                [categories_readtype, categories_lanes],
                 {
                     'id': 'bcl2fastq_sample_counts',
                     'title': 'bcl2fastq: Clusters by sample',
@@ -175,14 +181,14 @@ class MultiqcModule(BaseMultiqcModule):
             )
         )
 
-        if len(bcl2fastq_datas) == 1:
+        if len(found_files) == 1:
             # Add section with undetermined barcodes
             self.add_section(
-                name = "Undetermined barcodes by lane",
-                anchor = "undetermine_by_lane",
-                description = "Count of the top twenty most abundant undetermined barcodes by lanes",
-                plot = bargraph.plot(
-                    MultiqcModule.get_bar_data_from_undetermined(bcl2fastq_bylane),
+                name="Undetermined barcodes by lane",
+                anchor="undetermine_by_lane",
+                description="Count of the top twenty most abundant undetermined barcodes by lanes",
+                plot=bargraph.plot(
+                    MultiqcModule.get_bar_data_from_undetermined(self.lanes),
                     None,
                     {
                         'id': 'bcl2fastq_undetermined',
@@ -194,45 +200,6 @@ class MultiqcModule(BaseMultiqcModule):
                     }
                 )
             )
-
-    @staticmethod
-    def parse_file_as_json(myfile):
-        # Calculate Percents and averages
-        # TODO: move after all samples and lanes are summarised. Need:
-        #  percent_Q30
-        #  percent_perfectIndex
-        #  mean_qscore
-        # for lane_id, lane in run_data.items():
-        #     try:
-        #         lane["percent_Q30"] = (float(lane["yieldQ30"])
-        #             / float(lane["total_yield"])) * 100.0
-        #     except ZeroDivisionError:
-        #         lane["percent_Q30"] = "NA"
-        #     try:
-        #         lane["percent_perfectIndex"] = (float(lane["perfectIndex"])
-        #             / float(lane["total"])) * 100.0
-        #     except ZeroDivisionError:
-        #         lane["percent_perfectIndex"] = "NA"
-        #     try:
-        #         lane["mean_qscore"] = float(lane["qscore_sum"]) / float(lane["total_yield"])
-        #     except ZeroDivisionError:
-        #         lane["mean_qscore"] = "NA"
-        #     for sample_id, sample in lane["samples"].items():
-        #         try:
-        #             sample["percent_Q30"] = (float(sample["yieldQ30"]) / float(sample["total_yield"])) * 100.0
-        #         except ZeroDivisionError:
-        #             sample["percent_Q30"] = "NA"
-        #         try:
-        #             sample["percent_perfectIndex"] = (float(sample["perfectIndex"])
-        #                 / float(sample["total"])) * 100.0
-        #         except ZeroDivisionError:
-        #             sample["percent_perfectIndex"] = "NA"
-        #         try:
-        #             sample["mean_qscore"] = float(sample["qscore_sum"]) / float(sample["total_yield"])
-        #         except ZeroDivisionError:
-        #             sample["mean_qscore"] = "NA"
-
-        return bcl2fastq_data
 
     def _merge_bcl2fastq_runs(self, found_files):
         source_path_per_sample = defaultdict(set)
@@ -303,8 +270,9 @@ class MultiqcModule(BaseMultiqcModule):
                     lane_sample_d.bases += sample_d.bases
 
                     for index_metric in sample_data.get("IndexMetrics", []):
-                        lane_d.perfect_index   += index_metric["MismatchCounts"]["0"]
-                        sample_d.perfect_index += index_metric["MismatchCounts"]["0"]
+                        lane_d.perfect_index        += index_metric["MismatchCounts"]["0"]
+                        sample_d.perfect_index      += index_metric["MismatchCounts"]["0"]
+                        lane_sample_d.perfect_index += index_metric["MismatchCounts"]["0"]
 
                     for read_metric in sample_data.get("ReadMetrics", []):
                         r = read_metric["ReadNumber"]
@@ -374,58 +342,6 @@ class MultiqcModule(BaseMultiqcModule):
                 self.undetermined.reads += undet_reads
                 self.undetermined.bases += undet_bases
 
-    def _summarize_percentages(self):
-        for sid, d in self.samples.items():
-            d.reads_pct = d.reads / self.total_stats.reads * 100.0
-            d.bases_pct = d.bases / self.total_stats.bases * 100.0
-        for lid, d in self.lanes.items():
-            d.reads_pct = d.reads / self.total_stats.reads * 100.0
-            d.bases_pct = d.bases / self.total_stats.bases * 100.0
-
-    def _calculate_depth(self):
-        total_size = GENOME_SIZE
-        for sid, d in self.samples.items():
-            if d.yield_q30:
-                d.depth = d.yield_q30 / total_size
-        for lid, d in self.lanes.items():
-            if d.yield_q30:
-                d.depth = d.yield_q30 / total_size
-
-    @staticmethod
-    def _process_sample_data(sample_data_by_lane):
-        sample_data = defaultdict(int)
-        for lane_id, sample_lane_data in sample_data_by_lane.items():
-            for m, val in sample_lane_data.items():
-                if isinstance(val, int) or isinstance(val, float):
-                    sample_data[m] += val
-
-            s = sample_data  # to populate
-            try:
-                s["percent_Q30"] = (float(sample_lane_data["yieldQ30"]) / float(s["total_yield"])) * 100.0
-            except ZeroDivisionError:
-                s["percent_Q30"] = "NA"
-            try:
-                s["percent_perfectIndex"] = (float(s["perfectIndex"]) / float(s["total"])) * 100.0
-            except ZeroDivisionError:
-                s["percent_perfectIndex"] = "NA"
-            try:
-                s["mean_qscore"] = (float(s["qscore_sum"]) / float(s["total_yield"]))
-            except ZeroDivisionError:
-                s["mean_qscore"] = "NA"
-
-            # Remove unpopulated read keys
-            for r in range(1, 5):
-                try:
-                    if not s["R{}_yield".format(r)] and \
-                       not s["R{}_Q30".format(r)] and \
-                       not s["R{}_trimmed_bases".format(r)]:
-                        s.pop("R{}_yield".format(r))
-                        s.pop("R{}_Q30".format(r))
-                        s.pop("R{}_trimmed_bases".format(r))
-                except KeyError:
-                    pass
-        return sample_data
-
     @staticmethod
     def get_unknown_barcodes(lane_unknown_barcode):
         """ Python 2.* dictionaries are not sorted.
@@ -435,8 +351,8 @@ class MultiqcModule(BaseMultiqcModule):
             sorted_barcodes = OrderedDict(
                 sorted(
                     lane_unknown_barcode.items(),
-                    key = operator.itemgetter(1),
-                    reverse = True
+                    key=operator.itemgetter(1),
+                    reverse=True
                 )
             )
         except AttributeError:
@@ -446,46 +362,33 @@ class MultiqcModule(BaseMultiqcModule):
     def _make_samples_table(self):
         data = dict()
         for sample_id, d in self.samples.items():
-            percent_R_Q30 = dict()
-            for r in range(1,5):
+
+            data[sample_id] = d.generate_metics_dict(self.total_stats)
+
+            pct_q30_per_read = dict()
+            for r in range(1, 5):
                 # Zero division is possible
                 try:
-                    percent_R_Q30[r] = '{0:.1f}'.format(float(
+                    pct_q30_per_read[r] = '{0:.1f}'.format(float(
                         100.0 * d.read_stats["R{}_Q30".format(r)] / d.read_stats["R{}_yield".format(r)]))
                 except ZeroDivisionError:
-                    percent_R_Q30[r] = '0.0'
+                    pct_q30_per_read[r] = '0.0'
                 except KeyError:
                     pass
 
-            data[sample_id] = {
-                'total': d.reads,
-                'total_yield': d.bases,
-                'clusters_pct': d.reads_pct,
-                'yield_pct': d.bases_pct,
-            }
-
-            if d.yield_q30:
-                data[sample_id]['yieldQ30'] = d.yield_q30
-                if d.bases > 0:
-                    data[sample_id]['percent_Q30'] = float(d.yield_q30) / float(d.bases) * 100.0
-
-            if d.perfect_index and d.reads > 0:
-                data[sample_id]['percent_perfectIndex'] = '{0:.1f}'.format(float(100.0 * d.perfect_index / d.reads))
-
-            if d.qscore_sum and d.bases > 0:
-                data[sample_id]['mean_qscore'] = float(d.qscore_sum) / float(d.bases) * 100.0
-
-            if d.depth:
-                data[sample_id]['depth'] = d.depth
-
-            for r in range(1, 5):
                 try:
-                    data[sample_id]["percent_R{}_Q30".format(r)] = percent_R_Q30[r]
+                    data[sample_id]["percent_R{}_Q30".format(r)] = pct_q30_per_read[r]
                     data[sample_id]["R{}_trimmed_bases".format(r)] = d.read_stats["R{}_trimmed_bases".format(r)]
                 except KeyError:
                     pass
 
         return data
+
+    def _make_lanes_table(self):
+        return {
+            lane_id: d.generate_metics_dict(self.total_stats)
+            for lane_id, d in self.lanes.items()
+        }
 
     def add_general_stats(self, data):
         headers = OrderedDict()
@@ -507,7 +410,7 @@ class MultiqcModule(BaseMultiqcModule):
             'format': read_format,
         }
         headers['clusters_pct'] = {
-            'title': 'Clust. %',
+            'title': 'Clst %',
             'description': 'Percentage of clusters (read pairs) for this sample in the run, '
                            'as determined by bcl2fastq demultiplexing',
             'scale': 'RdYlGn',
@@ -516,7 +419,7 @@ class MultiqcModule(BaseMultiqcModule):
             'suffix': '%'
         }
         headers['total_yield'] = {
-            'title': 'Total Yield ({})'.format(config.base_count_prefix),
+            'title': 'Yield ({})'.format(config.base_count_prefix),
             'description': 'Total number of sequenced bases for this sample ({})'.format(config.base_count_desc),
             'scale': 'Greens',
             'modify': lambda x: x * config.base_count_multiplier,
@@ -524,7 +427,7 @@ class MultiqcModule(BaseMultiqcModule):
             'format': '{:,.1f}',
         }
         headers['yield_pct'] = {
-            'title': 'Yield %',
+            'title': 'Yld %',
             'description': 'Percentage of sequenced bases for this sample in this run',
             'scale': 'RdYlGn',
             'max': 100,
@@ -532,33 +435,42 @@ class MultiqcModule(BaseMultiqcModule):
             'suffix': '%'
         }
         headers['yieldQ30'] = {
-            'title': 'Yield &ge;Q30 (Mb)'.format(config.base_count_prefix),
+            'title': 'Yld &ge;Q30 (Mb)'.format(config.base_count_prefix),
             'description': 'Number of bases with a Phred score of 30 or higher ({})'.format(config.base_count_desc),
             'scale': 'Greens',
             'modify': lambda x: x * config.base_count_multiplier,
             'shared_key': 'base_count',
             'format': '{:,.1f}',
+            'hidden': True,
+        }
+        headers['percent_Q30'] = {
+            'title': 'Yld &ge;Q30',
+            'description': 'Percentage of bases with a Phred score of 30 or higher',
+            'scale': 'RdYlGn',
+            'max': 100,
+            'min': 0,
+            'suffix': '%',
         }
         # If no data for a column, header will be automatically ignored
         for r in range(1, 5):
-            hideCol = True
+            hide_col = True
             for s in data:
                 try:
                     if float(data[s]["percent_R{}_Q30".format(r)]) > 0:
-                        hideCol = False
+                        hide_col = False
                 except KeyError:
                     pass
             headers['percent_R{}_Q30'.format(r)] = {
-                'title': 'R{} Yield &ge;Q30'.format(r),
+                'title': 'R{} &ge;Q30'.format(r),
                 'description': 'Percent of bases in R{} with a Phred score of 30 or higher'.format(r),
                 'scale': 'RdYlGn',
                 'max': 100,
                 'min': 0,
                 'suffix': '%',
-                'hidden': hideCol
+                'hidden': hide_col
             }
-        headers['perfectPercent'] = {
-            'title': 'Perf Idx',
+        headers['percent_perfectIndex'] = {
+            'title': 'Perf. idx',
             'description': 'Percent of reads with perfect index (0 mismatches)',
             'max': 100,
             'min': 0,
@@ -566,12 +478,12 @@ class MultiqcModule(BaseMultiqcModule):
             'suffix': '%'
         }
         # If no data for a column, header will be automatically ignored
-        for r in range(1,5):
-            hideCol = True
+        for r in range(1, 5):
+            hide_col = True
             for s in data:
                 try:
                     if data[s]["R{}_trimmed_bases".format(r)] > 0:
-                        hideCol = False
+                        hide_col = False
                 except KeyError:
                     pass
             try:
@@ -580,37 +492,12 @@ class MultiqcModule(BaseMultiqcModule):
                     'description': 'Number of bases trimmed ({})'.format(config.base_count_desc),
                     'scale': 'RdYlBu',
                     'modify': lambda x: x * 0.000001,
-                    'hidden': hideCol,
+                    'hidden': hide_col,
                     'format': '{:,.1f} ' + config.base_count_prefix,
                 }
             except KeyError:
                 pass
         self.general_stats_addcols(data, headers)
-        return data
-
-    def _make_lanes_table(self):
-        data = dict()
-        for lane_id, d in self.lanes.items():
-            data[lane_id] = {
-                'total': d.reads,
-                'total_yield': d.bases,
-                'clusters_pct': d.reads_pct,
-                'yield_pct': d.bases_pct,
-            }
-
-            if d.yield_q30:
-                data[lane_id]['yieldQ30'] = d.yield_q30
-                if d.bases > 0:
-                    data[lane_id]['percent_Q30'] = float(d.yield_q30) / float(d.bases) * 100.0
-
-            if d.perfect_index and d.reads > 0:
-                data[lane_id]['percent_perfectIndex'] = '{0:.1f}'.format(float(100.0 * d.perfect_index / d.reads))
-
-            if d.qscore_sum and d.bases > 0:
-                data[lane_id]['mean_qscore'] = float(d.qscore_sum) / float(d.bases) * 100.0
-
-            if d.depth:
-                data[lane_id]['depth'] = d.depth
         return data
 
     @staticmethod
@@ -633,7 +520,7 @@ class MultiqcModule(BaseMultiqcModule):
             'format': read_format,
         }
         headers['total_yield'] = {
-            'title': 'Total Yield'.format(config.base_count_prefix),
+            'title': 'Total yield'.format(config.base_count_prefix),
             'description': 'Tota number of bases yielded for this lane ({})'.format(config.base_count_desc),
             'scale': 'Greens',
             'modify': lambda x: x * config.base_count_multiplier,
@@ -641,7 +528,7 @@ class MultiqcModule(BaseMultiqcModule):
             'format': '{:,.1f}&nbsp;' + config.base_count_prefix,
         }
         headers['percent_Q30'] = {
-            'title': 'Bases &ge; Q30',
+            'title': 'Yield &ge;Q30',
             'description': 'Percentage of bases with greater than or equal to Q30 quality score',
             'suffix': '%',
             'max': 100,
@@ -649,13 +536,13 @@ class MultiqcModule(BaseMultiqcModule):
             'scale': 'RdYlGn'
         }
         headers['mean_qscore'] = {
-            'title': 'Mean Quality',
+            'title': 'Mean quality',
             'description': 'Average phred qualty score',
             'min': 0,
             'scale': 'Spectral'
         }
         headers['percent_perfectIndex'] = {
-            'title': 'Perfect Index',
+            'title': 'Reads with perfect idx',
             'description': 'Percent of reads with perfect index (0 mismatches)',
             'max': 100,
             'min': 0,
@@ -672,42 +559,41 @@ class MultiqcModule(BaseMultiqcModule):
         return table.plot(data, headers, table_config)
 
     @staticmethod
-    def prepend_runid(runId, rest):
-        return str(runId)+" - "+str(rest)
+    def prepend_runid(run_id, rest):
+        return str(run_id) + " - " + str(rest)
 
     @staticmethod
-    def get_counts_bar_data_per_category(bcl2fastq_bysample):
+    def get_counts_bar_data_per_category(lanes_or_samples, undetermined_by_each=None):
         bar_data = {}
-        for sample_id, sample_data in bcl2fastq_bysample.items():
-            if 'perfectIndex' in sample_data:
-                bar_data[sample_id] = {
-                    "perfect": sample_data["perfectIndex"],
-                    "imperfect": sample_data["total"] - sample_data["perfectIndex"],
+        for id, stats in lanes_or_samples.items():
+            if stats.perfect_index is not None:
+                bar_data[id] = {
+                    "perfect": stats.perfect_index,
+                    "imperfect": stats.reads - stats.perfect_index,
                 }
-                if "undetermined" in sample_data:
-                    bar_data[sample_id]["undetermined"] = sample_data["undetermined"]
+                if undetermined_by_each:
+                    bar_data[id]["undetermined"] = undetermined_by_each[id].reads
         return bar_data
 
     @staticmethod
-    def get_perfect_counts_bar_data_per_lane(bcl2fastq_bysample_lane):
-        bar_data = {}
-        for sname, per_lane in bcl2fastq_bysample_lane.items():
-            bar_data[sname] = {}
-            for lane, stats in per_lane.items():
-                if 'perfectIndex' in stats:
-                    bar_data[sname][lane] = stats["perfectIndex"]
+    def get_perfect_counts_bar_data_per_lane(sample_by_lane):
+        bar_data = defaultdict(dict)
+        for lid, samples in sample_by_lane.items():
+            for sid, stats in samples.items():
+                if stats.perfect_index is not None:
+                    bar_data[sid][lid] = stats.perfect_index
         return bar_data
 
     @staticmethod
-    def get_bar_data_from_undetermined(bcl2fastq_bylane):
+    def get_bar_data_from_undetermined(lanes):
         """ Get data to plot for undetermined barcodes.
         """
         bar_data = defaultdict(dict)
         # get undetermined barcodes for each lanes
-        for lane_id, lane in bcl2fastq_bylane.items():
+        for lid, lane in lanes.items():
             try:
-                for barcode, count in islice(lane['unknown_barcodes'].items(), 20):
-                    bar_data[barcode][lane_id] = count
+                for barcode, count in islice(lane.unknown_barcodes.items(), 20):
+                    bar_data[barcode][lane] = count
             except AttributeError:
                 pass
 
