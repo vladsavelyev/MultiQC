@@ -78,22 +78,12 @@ class MultiqcModule(BaseMultiqcModule):
         if len(found_files) == 0:
             raise UserWarning
 
-        # Make sure all data belong to one sequencer run
-        # datas_by_sequencerrun = defaultdict(list)
-        # for raw_parsed_data in raw_parsed_datas:
-        #     for sequencer_run_id, sequencer_run_data in bcl2fastq_data.items():
-        #         datas_by_sequencerrun[sequencer_run_id].append(sequencer_run_data)
-        # if len(datas_by_sequencerrun) > 1:
-        #     log.error("Input data belongs to multiple sequencer runs. It's not supported by the bcl2fastq module. " +
-        #               "Files: " + str(found_files), " runs: " + str(datas_by_sequencerrun.keys()))
-        #     raise UserWarning
-        # sequencer_run_id, bcl2fastq_runs = list(datas_by_sequencerrun.items())[0]
-
         source_path_per_sample = self._merge_bcl2fastq_runs(found_files)
 
         if len(found_files) > 1:
-            log.warning("Warning: multiple bcl2fastq runs detected. "
-                        "They will be merged, undetermined stats will recalculated.")
+            log.warning("Detected multiple bcl2fastq runs from the same sequencer output. "
+                        "They will be merged, undetermined stats will recalculated, "
+                        "unknown barcodes stats will be dropped.")
         self._recalculate_undetermined()
 
         # Filter to strip out ignored sample names
@@ -229,6 +219,7 @@ class MultiqcModule(BaseMultiqcModule):
 
         if len(contents_by_sequencer_run) > 1:
             log.error("Input data belongs to multiple sequencer runs. It's not supported by the bcl2fastq module. " +
+                      "Please run MultiQC on each run separately to generate separate reports. "
                       "Files: " + str(found_files), " runs: " + str(contents_by_sequencer_run.keys()))
             raise UserWarning
 
