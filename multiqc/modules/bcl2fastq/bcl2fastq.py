@@ -257,8 +257,8 @@ class MultiqcModule(BaseMultiqcModule):
 
                     sample_d.reads      += sample_data["NumberReads"]
                     sample_d.bases      += sample_data["Yield"]
-                    lane_sample_d.reads += sample_d.reads
-                    lane_sample_d.bases += sample_d.bases
+                    lane_sample_d.reads += sample_data["NumberReads"]
+                    lane_sample_d.bases += sample_data["Yield"]
 
                     for index_metric in sample_data.get("IndexMetrics", []):
                         lane_d.perfect_index        += index_metric["MismatchCounts"]["0"]
@@ -584,7 +584,7 @@ class MultiqcModule(BaseMultiqcModule):
         for lid, lane in lanes.items():
             try:
                 for barcode, count in islice(lane.unknown_barcodes.items(), 20):
-                    bar_data[barcode][lane] = count
+                    bar_data[barcode][lid] = count
             except AttributeError:
                 pass
 
