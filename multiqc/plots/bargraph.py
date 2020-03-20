@@ -86,6 +86,25 @@ def plot (data, cats = None, pconfig = None):
     if type(data) is not list:
         data = [data]
 
+    sorted_data = []
+    for d in data:
+        # Sort the rows like the table (umccr)
+        try:
+            reference_samples = config.umccr.get('reference_samples', [])
+            tumor_names  = [config.umccr.get('tumor_name' , ""), config.umccr.get('tumor_rgid' , "")]
+            normal_names = [config.umccr.get('normal_name', ""), config.umccr.get('normal_rgid', "")]
+        except:
+            pass
+        else:
+            # We want to show in order 1. tumor 2. normal 3. reference samples
+            main_samples = [r for r in tumor_names + normal_names if r in d.keys()]
+            ref_samples = [r for r in reference_samples if r in d.keys()]
+            orther_samples = [r for r in d.keys() if r not in reference_samples + main_samples]
+            d_keys = main_samples + orther_samples + ref_samples
+            d = OrderedDict((k, d[k]) for k in d_keys)
+        sorted_data.append(d)
+    data = sorted_data
+
     # Make list of cats from different inputs
     if cats is None:
         cats = list()
