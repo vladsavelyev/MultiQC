@@ -305,16 +305,17 @@ def make_table (dt):
 
     # Build the table body
     html += '<tbody>'
+    # sort the rows so the tumor and normal samples go first (umccr)
     t_row_keys = list(t_rows.keys())
     try:
         reference_samples = config.umccr.get('reference_samples', [])
-        tumor_sample = config.umccr.get('tumor_sample')
-        normal_sample = config.umccr.get('normal_sample')
+        tumor_names  = [config.umccr.get('tumor_name' , ""), config.umccr.get('tumor_rgid' , "")]
+        normal_names = [config.umccr.get('normal_name', ""), config.umccr.get('normal_rgid', "")]
     except:
         pass
     else:
         # We want to show in order 1. tumor 2. normal 3. reference samples
-        main_samples = [r for r in [tumor_sample, normal_sample] if r in t_row_keys]
+        main_samples = [r for r in tumor_names + normal_names if r in t_row_keys]
         ref_samples = [r for r in reference_samples if r in t_row_keys]
         orther_samples = [r for r in t_row_keys if r not in reference_samples + main_samples]
         t_row_keys = main_samples + orther_samples + ref_samples
