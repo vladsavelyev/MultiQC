@@ -48,7 +48,7 @@ class MultiqcModule(BaseMultiqcModule):
                 for s_name in parsed_data:
                     s_name = self.clean_s_name(s_name, f['root'])
                     if s_name in self.somalier_data.keys():
-                            log.debug("Duplicate sample name found! Overwriting: {}".format(s_name))
+                        log.debug("Duplicate sample name found! Overwriting: {}".format(s_name))
                     self.add_data_source(f, s_name)
                     self.somalier_data[s_name] = parsed_data[s_name]
 
