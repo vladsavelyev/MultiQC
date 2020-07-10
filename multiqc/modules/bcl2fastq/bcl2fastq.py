@@ -12,12 +12,29 @@ from multiqc.modules.base_module import BaseMultiqcModule
 
 log = logging.getLogger(__name__)
 
-GENOME_SIZE = 3200000000
-EXOME_SIZE  = 320000000
-
 read_format = '{:,.1f} ' + config.read_count_prefix
 if config.read_count_multiplier == 1:
     read_format = '{:,.0f}'
+
+def _get_genome_size():
+    gs = getattr(config, 'bcl2fastq_config', {}).get('genome_size')
+    if gs:
+        try:
+            gs = float(gs)
+        except ValueError:
+            presets = {'hg19_genome': 2897310462,
+                       'hg38_genome': 3049315783,
+                       'mm10_genome': 2652783500}
+            if gs in presets:
+                gs = presets[gs]
+            else:
+                log.warning('The size for genome ' + gs + ' is unknown to MultiQC, ' +
+                         'please specify it explicitly or choose one of the following: ' +
+                         ', '.join(presets.keys()) + '.')
+                gs = None
+    return gs
+
+genome_size = _get_genome_size()
 
 
 class Metrics:
@@ -44,7 +61,8 @@ class Metrics:
             if self.bases > 0:
                 data['percent_Q30'] = float(self.yield_q30) / float(self.bases) * 100.0
 
-            data['depth'] = self.yield_q30 / GENOME_SIZE
+            if genome_size:
+                data['depth'] = self.yield_q30 / genome_size
 
         if self.perfect_index and self.reads > 0:
             data['percent_perfectIndex'] = '{0:.1f}'.format(float(100.0 * self.perfect_index / self.reads))
@@ -386,15 +404,15 @@ class MultiqcModule(BaseMultiqcModule):
         headers['depth'] = {
             'title': 'Est. depth'.format(config.read_count_prefix),
             'description': 'Estimated depth based on the number of bases with quality score greater or equal to Q30, '
-                           'assuming human whole genome',
-                           # ' (or exome, if the sample id contains "rna" substring)',
+                           'assuming the genome size is {} as provided in config'.format(genome_size),
             'min': 0,
             'suffix': 'X',
             'scale': 'BuPu'
         }
         headers['total'] = {
             'title': 'Clusters'.format(config.read_count_prefix),
-            'description': 'Total number of clusters (read pairs) for this sample as determined by bcl2fastq demultiplexing ({})'.format(config.read_count_desc),
+            'description': 'Total number of clusters (read pairs) for this sample as determined by bcl2fastq '
+                           'demultiplexing ({})'.format(config.read_count_desc),
             'scale': 'Blues',
             'modify': lambda x: x * config.read_count_multiplier,
             'shared_key': 'read_count',
@@ -497,7 +515,8 @@ class MultiqcModule(BaseMultiqcModule):
         headers = OrderedDict()
         headers['depth'] = {
             'title': 'Est. depth'.format(config.read_count_prefix),
-            'description': 'Estimated depth based on the number of bases with quality score greater or equal to Q30',
+            'description': 'Estimated depth based on the number of bases with quality score greater or equal to Q30, '
+                           'assuming the genome size is {} as provided in config'.format(genome_size),
             'min': 0,
             'suffix': 'X',
             'scale': 'BuPu'
