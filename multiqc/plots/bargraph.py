@@ -91,8 +91,8 @@ def plot (data, cats = None, pconfig = None):
         # Sort the rows like the table (umccr)
         try:
             reference_samples = config.umccr.get('reference_samples', [])
-            tumor_names  = [config.umccr.get('tumor_name' , ""), config.umccr.get('tumor_rgid' , "")]
-            normal_names = [config.umccr.get('normal_name', ""), config.umccr.get('normal_rgid', "")]
+            tumor_names  = list(set([config.umccr.get('tumor_name', ""), config.umccr.get('tumor_rgid', "")]))
+            normal_names = list(set([config.umccr.get('normal_name', ""), config.umccr.get('normal_rgid', "")]))
         except:
             pass
         else:

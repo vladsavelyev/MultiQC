@@ -540,10 +540,10 @@ function plot_stacked_bar_graph(target, ds){
         if((window.mqc_highlight_regex_mode && s_name.match(f_text)) || (!window.mqc_highlight_regex_mode && s_name.indexOf(f_text) > -1)){
           // Make the data point in each series with this index have a border colour
           $.each(data, function(k, d){
-            data[k]['data'][j] = {
-              'y': data[k]['data'][j],
-              'borderColor': window.mqc_highlight_f_cols[idx]
-            }
+            // data[k]['data'][j] = {
+            //   'y': data[k]['data'][j],
+            //   'borderColor': window.mqc_highlight_f_cols[idx]
+            // }
           });
         }
       });
