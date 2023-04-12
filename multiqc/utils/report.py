@@ -13,6 +13,8 @@ import mimetypes
 import os
 import re
 import time
+import asyncio
+import aiofiles
 from collections import OrderedDict, defaultdict
 
 import lzstring
@@ -168,7 +170,7 @@ def get_filelist(run_module_names):
         logger.info("Skipping {} file search patterns".format(len(skipped_patterns)))
         logger.debug("Skipping search patterns: {}".format(", ".join(skipped_patterns)))
 
-    def add_file(fn, root):
+    async def add_file(fn, root):
         """
         Function applied to each file found when walking the analysis
         directories. Runs through all search patterns and returns True
@@ -203,7 +205,7 @@ def get_filelist(run_module_names):
             for key, sps in patterns.items():
                 start = time.time()
                 for sp in sps:
-                    if search_file(sp, f, key):
+                    if await search_file(sp, f, key):
                         # Check that we shouldn't exclude this file
                         if not exclude_file(sp, f):
                             # Looks good! Remember this file
@@ -306,12 +308,16 @@ def get_filelist(run_module_names):
     )
     with progress_obj as progress:
         mqc_task = progress.add_task("searching", total=len(searchfiles), s_fn="")
-        for sf in searchfiles:
-            progress.update(mqc_task, advance=1, s_fn=os.path.join(sf[1], sf[0])[-50:])
-            if not add_file(sf[0], sf[1]):
-                file_search_stats["skipped_no_match"] += 1
-        progress.update(mqc_task, s_fn="")
+        
+        async def search_files_async():
+            coros = [asyncio.create_task(add_file(sf[0], sf[1])) for sf in searchfiles]
+            for sf, coro in zip(searchfiles, asyncio.as_completed(coros)):
+                if not await coro:
+                    file_search_stats["skipped_no_match"] += 1
+                progress.update(mqc_task, advance=1, s_fn=os.path.join(sf[1], sf[0])[-50:])
+            progress.update(mqc_task, s_fn="")
 
+        asyncio.run(search_files_async())
     runtimes["total_sp"] = time.time() - total_sp_starttime
 
     # Debug log summary about what we skipped
@@ -322,7 +328,7 @@ def get_filelist(run_module_names):
     logger.debug(f"Summary of files that were skipped by the search: [{'] // ['.join(summaries)}]")
 
 
-def search_file(pattern, f, module_key):
+async def search_file(pattern, f, module_key):
     """
     Function to searach a single file for a single search pattern.
     """
@@ -365,9 +371,9 @@ def search_file(pattern, f, module_key):
             repattern = re.compile(pattern["contents_re"])
         try:
             file_path = os.path.join(f["root"], f["fn"])
-            with io.open(file_path, "r", encoding="utf-8") as fh:
+            async with aiofiles.open(file_path, "r", encoding="utf-8") as fh:
                 l = 1
-                for line in fh:
+                async for line in fh:
                     # Search by file contents (string)
                     if pattern.get("contents") is not None:
                         if pattern["contents"] in line:
