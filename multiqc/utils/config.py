@@ -5,6 +5,7 @@ config variables to be used across all other modules """
 
 
 import collections
+from importlib import metadata
 import inspect
 
 # Default logger will be replaced by caller
@@ -19,11 +20,96 @@ import yaml
 
 import multiqc
 
+from pydantic import BaseModel, Field
+from typing import Dict, List, Optional, Union
+
 logger = logging.getLogger("multiqc")
 
+
+class MultiQCConfig(BaseModel):
+    title: Optional[str] = None
+    subtitle: Optional[str] = None
+    intro_text: Optional[str] = None
+    report_comment: Optional[str] = None
+    report_header_info: Optional[str] = None
+    show_analysis_paths: bool = True
+    show_analysis_time: bool = True
+    config_file: Optional[str] = None
+    custom_logo: Optional[str] = None
+    custom_logo_url: Optional[str] = None
+    custom_logo_title: Optional[str] = None
+    custom_css_files: List = []
+    simple_output: bool = False
+    template: str = "default"
+    profile_runtime: bool = False
+    pandoc_template: Optional[str] = None
+    read_count_multiplier: float = 0.000001
+    read_count_prefix: str = "M"
+    read_count_desc: str = "millions"
+    long_read_count_multiplier: float = 0.001
+    long_read_count_prefix: str = "K"
+    long_read_count_desc: str = "thousands"
+    base_count_multiplier: float = 0.000001
+    base_count_prefix: str = "Mb"
+    base_count_desc: str = "millions"
+    output_fn_name: str = "multiqc_report.html"
+    data_dir_name: str = "multiqc_data"
+    plots_dir_name: str = "multiqc_plots"
+    data_format: str = "tsv"
+    module_tag: List = []
+    force: bool = False
+    no_ansi: bool = False
+    quiet: bool = False
+    prepend_dirs: bool = False
+    prepend_dirs_depth: int = 0
+    prepend_dirs_sep: str = " | "
+    file_list: bool = False
+    make_data_dir: bool = True
+    zip_data_dir: bool = False
+    data_dump_file: bool = True
+    megaqc_url: bool = False
+    megaqc_access_token: Optional[str] = None
+    megaqc_timeout: int = 30
+    export_plots: bool = False
+    make_report: bool = True
+    plots_force_flat: bool = False
+    plots_force_interactive: bool = False
+    plots_flat_numseries: int = 100
+    num_datasets_plot_limit: int = 50
+    collapse_tables: bool = True
+    max_table_rows: int = 500
+    table_columns_visible: Dict = {}
+    table_columns_placement: Dict = {}
+    table_columns_name: Dict = {}
+    table_cond_formatting_colours: Dict = {
+        'blue': "#337ab7",
+        'lbue': "#5bc0de",
+        'pass': "#5cb85c",
+        'warn': "#f0ad4e",
+        'fail': "#d9534f"
+    }
+    table_cond_formatting_rules: Dict = {
+        'all_columns': {
+            'pass': [{'s_eq': "pass"}, {'s_eq': "true"}],
+            'warn': [{'s_eq': "warn"}, {'s_eq': "unknown"}],
+            'fail': [{'s_eq': "fail"}, {'s_eq': "false"}]
+        },
+        'QCStatus': {
+            'fail': [{'s_contains': "fail"}]
+        }
+    }
+    decimalPoint_format: Optional[str] = None
+    thousandsSep_format: Optional[str] = None
+    remove_sections: List = []
+    section_comments: Dict = {}
+    lint: bool = False
+    custom_plot_config: Dict
+    custom_table_header_config: Dict
+
+
+
 # Get the MultiQC version
-version = pkg_resources.get_distribution("multiqc").version
-short_version = pkg_resources.get_distribution("multiqc").version
+short_version = version = metadata.version("multiqc")
 script_path = os.path.dirname(os.path.realpath(__file__))
 git_hash = None
 git_hash_short = None
