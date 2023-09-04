@@ -24,14 +24,7 @@ REPO_URL = "https://github.com/ewels/MultiQC"
 pr_title = os.environ["PR_TITLE"]
 pr_number = os.environ["PR_NUMBER"]
 
-# Trim the PR number automatically appended when GitHub squashes commits, e.g. "Module: Updated (#2026)".
-if not pr_title.endswith(f" (#{pr_number})"):
-    print(
-        f"Note: the PR title '{pr_title}' doesn't end with PR number {pr_number}, which "
-        f"likely means it was pushed directly into master, or wasn't squashed",
-        file=sys.stderr,
-    )
-    sys.exit(0)
+# Trim the PR number added when GitHub squashes commits, e.g. "Module: Updated (#2026)".
 pr_title = pr_title.removesuffix(f" (#{pr_number})")
 
 
