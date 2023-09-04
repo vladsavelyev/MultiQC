@@ -3,7 +3,7 @@ name: Update CHANGELOG.md
 on:
   pull_request_target:
     branches:
-      - changelog-ci
+      - master
     types:
       - closed
   # For manually triggering this workflow
@@ -19,7 +19,7 @@ env:
 jobs:
   update_changelog:
     runs-on: ubuntu-latest
-    if: github.repository_owner == 'ewels'
+    if: github.repository_owner == 'vladsavelyev'
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v3
