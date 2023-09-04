@@ -42,6 +42,8 @@
   - fix `UnicodeDecodeError` when parsing `fastqc_data.txt`: try latin-1 or fail gracefully ([#2024](https://github.com/ewels/MultiQC/issues/2024))
 - **Kaiju**:
   - Fix `UnboundLocalError` on outputs when Kanju was run with the `-e` flag ([#2023](https://github.com/ewels/MultiQC/pull/2023))
+- **QUAST**
+  - Some update 5 ([#6](https://github.com/ewels/MultiQC/pull/6))
 
 ## [MultiQC v1.15](https://github.com/ewels/MultiQC/releases/tag/v1.15) - 2023-08-04
 
