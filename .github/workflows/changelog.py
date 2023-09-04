@@ -22,12 +22,12 @@ REPO_URL = "https://github.com/ewels/MultiQC"
 # Assumes the environment is set by the GitHub action.
 pr_title = os.environ["PR_TITLE"]
 pr_number = os.environ["PR_NUMBER"]
-base_path = os.environ["GITHUB_WORKSPACE"]
+base_path = Path(os.environ["GITHUB_WORKSPACE"])
 
 # Trim the PR number added when GitHub squashes commits, e.g. "Module: Updated (#2026)"
 pr_title = pr_title.removesuffix(f" (#{pr_number})")
 
-changelog_path = Path(base_path) / "CHANGELOG.md"
+changelog_path = base_path / "CHANGELOG.md"
 
 
 # If "(chore)" or "(docs)" is appended to the PR title, it indicates that we don't want to log this change.
@@ -43,7 +43,7 @@ def find_module_info(module_name):
     But that's good - we avoid installing and importing MultiQC here, and the action runs faster.
     """
     module_name = module_name.lower()
-    modules_dir = changelog_path / "multiqc/modules"
+    modules_dir = base_path / "multiqc/modules"
     py_path = None
     for dir_name in os.listdir(modules_dir):
         if dir_name.lower() == module_name:
