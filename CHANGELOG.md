@@ -44,6 +44,8 @@
   - Fix `UnboundLocalError` on outputs when Kanju was run with the `-e` flag ([#2023](https://github.com/ewels/MultiQC/pull/2023))
 - **QUAST**
   - Some update 5 ([#6](https://github.com/ewels/MultiQC/pull/6))
+- **QUAST**
+  - Some update ([#12](https://github.com/ewels/MultiQC/pull/12))
 
 ## [MultiQC v1.15](https://github.com/ewels/MultiQC/releases/tag/v1.15) - 2023-08-04
 
