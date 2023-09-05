@@ -1,11 +1,11 @@
 name: Update CHANGELOG.md
 
 on:
-  pull_request_target:
+  pull_request_review:
     branches:
       - master
     types:
-      - closed
+      - submitted
   # For manually triggering this workflow
   workflow_dispatch:
     inputs:
@@ -18,8 +18,8 @@ env:
 
 jobs:
   update_changelog:
+    if: github.repository_owner == 'vladsavelyev' && github.event.review.state == 'approved'
     runs-on: ubuntu-latest
-    if: github.repository_owner == 'vladsavelyev'
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v3
@@ -39,5 +39,5 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add CHANGELOG.md
-          git commit -m "Update CHANGELOG.md for PR #${{ github.event.pull_request.number }}"
+          git commit -m "Update CHANGELOG.md"
           git push
