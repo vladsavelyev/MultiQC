@@ -38,7 +38,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git fetch origin ${ { github.event.pull_request.head.ref }}  # Fetch the latest changes from the PR's branch
+          git fetch origin ${{ github.event.pull_request.head.ref }}  # Fetch the latest changes from the PR's branch
           git rebase FETCH_HEAD # Rebase your local changes on top of the latest changes in the PR's branch
           git add CHANGELOG.md
           git commit -m "Update CHANGELOG.md"
