@@ -49,10 +49,11 @@ jobs:
       - name: Commit and push if changed
         if: env.changed == 'YES'
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add CHANGELOG.md
-          git commit -m "Update CHANGELOG.md"
-          git fetch origin ${{ github.event.pull_request.head.ref }}  # Fetch the latest changes from the PR's branch
-          git rebase FETCH_HEAD # Rebase your local changes on top of the latest changes in the PR's branch
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+          git fetch origin ${ { github.event.pull_request.head.ref }}
+          git rebase FETCH_HEAD
+          echo "Extra Info" >> README.md
+          git add README.md
+          git commit -m "Added extra info by GitHub Actions for PR #${{ github.event.pull_request.number }}"
+          git push https://${{ secrets.MY_PAT }}@github.com/${{ github.event.pull_request.head.repo.full_name }} HEAD:${{ github.event.pull_request.head.ref }}
