@@ -1,3 +1,5 @@
+foo bar
+
 # If you are hosting MultiQC reports >= v1.8 on a web application with CSP
 # (Content Security Policy), you will need the following scripts allowlisted:
 
