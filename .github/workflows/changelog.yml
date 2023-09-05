@@ -24,11 +24,23 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v3
 
+      - name: Check if CHANGELOG.md was modified by other commits (including previous runs of this workflow)
+        run: |
+          pr_number=${{ github.event.pull_request.number }}
+          files=$(gh pr diff $pr_number --name-only)
+          if [[ $files == *"CHANGELOG.md"* ]]; then
+            echo "CHANGELOG.md was modified in this PR"
+            echo "changelog_modified=true" >> $GITHUB_ENV
+          else
+            echo "CHANGELOG.md was not modified in this PR"
+            echo "changelog_modified=false" >> $GITHUB_ENV
+          fi
+
       - name: Update CHANGELOG.md from the PR title
+        if: env.changelog_modified == 'false'
         run: python ${GITHUB_WORKSPACE}/.github/workflows/changelog.py
 
       - name: Check if CHANGELOG.md actually changed
-        id: checkfile
         run: |
           git diff --exit-code CHANGELOG.md || echo "changed=YES" >> $GITHUB_ENV
           echo "file changed: ${{ env.changed }}"
