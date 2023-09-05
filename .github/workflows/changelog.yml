@@ -14,7 +14,7 @@ on:
         required: true
 env:
   PR_TITLE: ${{ github.event.pull_request.title }} # this is returning empty
-  PR_NUMBER: ${{ github.event.number }}
+  PR_NUMBER: ${{ github.event.pull_request.number }}
 
 jobs:
   update_changelog:
@@ -40,4 +40,4 @@ jobs:
           git config --local user.name "GitHub Action"
           git add CHANGELOG.md
           git commit -m "Update CHANGELOG.md"
-          git push
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
