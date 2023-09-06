@@ -18,13 +18,12 @@ env:
   GH_TOKEN: ${{ github.token }} # This is needed for the GitHub CLI
 permissions:
   contents: write
-
 jobs:
   update_changelog:
     if: github.repository_owner == 'vladsavelyev' && github.event.review.state == 'approved'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@2
       - uses: actions/setup-python@v3
 
       - name: Check if CHANGELOG.md was modified by other commits (including previous runs of this workflow)
