@@ -49,10 +49,10 @@ jobs:
       - name: Commit and push if changed
         if: env.changed == 'YES'
         env:
-          GH_TOKEN: ${{ secrets.MQC_BOT_GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git config --global user.email "multiqc-bot@seqera.io"
-          git config --global user.name "MultiQC Bot"
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
           gh pr checkout ${{ github.event.pull_request.number }}        
           git add CHANGELOG.md
           git commit -m "Update CHANGELOG.md"
