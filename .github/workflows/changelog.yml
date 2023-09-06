@@ -16,6 +16,8 @@ env:
   PR_TITLE: ${{ github.event.pull_request.title }}
   PR_NUMBER: ${{ github.event.pull_request.number }}
   GH_TOKEN: ${{ github.token }} # This is needed for the GitHub CLI
+permissions:
+  contents: write
 
 jobs:
   update_changelog:
