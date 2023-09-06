@@ -2,7 +2,7 @@
 
 ### Aggregate bioinformatics results across many samples into a single report
 
-test2
+test3
 
 ##### Find [documentation](http://multiqc.info/docs) and [example reports](http://multiqc.info/examples/rna-seq/multiqc_report.html) at [http://multiqc.info](http://multiqc.info)
 
