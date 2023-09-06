@@ -49,10 +49,10 @@ jobs:
       - name: Commit and push if changed
         if: env.changed == 'YES'
         run: |
-          git config --local user.name "GitHub Actions Bot"
-          git config --local user.email "actions@github.com"
+          git config --local user.name "MultiQC Bot"
+          git config --local user.email "multiqc-bot@seqera.io"
           git add CHANGELOG.md
           git commit -m "Update CHANGELOG.md"
           git fetch ${{ github.event.pull_request.head.repo.clone_url }} ${{ github.event.pull_request.head.ref }}
           git rebase FETCH_HEAD
-          git push ${{ github.event.pull_request.head.repo.clone_url }} HEAD:${{ github.event.pull_request.head.ref }}
+          git push https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.event.pull_request.head.repo.full_name }} HEAD:${{ github.event.pull_request.head.ref }}
