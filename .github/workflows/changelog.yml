@@ -12,10 +12,6 @@ on:
       number:
         description: PR number
         required: true
-env:
-  PR_TITLE: ${{ github.event.pull_request.title }}
-  PR_NUMBER: ${{ github.event.pull_request.number }}
-  GH_TOKEN: ${{ github.token }} # This is needed for the GitHub CLI
 permissions:
   contents: write
 jobs:
@@ -23,10 +19,17 @@ jobs:
     if: github.repository_owner == 'vladsavelyev' && github.event.review.state == 'approved'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          token: ${{ github.token }}
+
       - uses: actions/setup-python@v3
 
       - name: Check if CHANGELOG.md was modified by other commits (including previous runs of this workflow)
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           pr_number=${{ github.event.pull_request.number }}
           files=$(gh pr diff $pr_number --name-only)
@@ -40,6 +43,9 @@ jobs:
 
       - name: Update CHANGELOG.md from the PR title
         if: env.changelog_modified == 'false'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: python ${GITHUB_WORKSPACE}/.github/workflows/changelog.py
 
       - name: Check if CHANGELOG.md actually changed
@@ -50,11 +56,10 @@ jobs:
       - name: Commit and push if changed
         if: env.changed == 'YES'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          gh pr checkout ${{ github.event.pull_request.number }}        
           git add CHANGELOG.md
           git commit -m "Update CHANGELOG.md"
           git push
