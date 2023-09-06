@@ -2,6 +2,8 @@
 """
 MultiQC is a tool to aggregate bioinformatics results across many samples into a single report. It is written in Python and contains modules for a large number of common bioinformatics tools.
 
+And so on
+
 You can install MultiQC from PyPI as follows::
 
     pip install multiqc
