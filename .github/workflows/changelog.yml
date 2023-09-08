@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v3
+      - uses: actions/setup-python@v4
 
       - name: Check if CHANGELOG.md was modified by other commits (including previous runs of this workflow)
         env:
@@ -52,4 +52,4 @@ jobs:
         uses: ad-m/github-push-action@master
         with:
           branch: ${{ github.event.pull_request.head.ref }}
-          github_token: ${{ secrets.MQC_BOT_GITHUB_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
