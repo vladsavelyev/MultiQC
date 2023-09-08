@@ -46,4 +46,4 @@ jobs:
           git config user.name "GitHub Action"
           git add ${GITHUB_WORKSPACE}/CHANGELOG.md
           git commit -m "Update CHANGELOG.md"
-          git push
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
