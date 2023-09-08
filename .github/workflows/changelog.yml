@@ -1,12 +1,8 @@
 name: Update CHANGELOG.md
 
 on:
-  push:
-  workflow_dispatch:
-    inputs:
-      number:
-        description: PR number
-        required: true
+  - push
+  - pull_request
 permissions:
   contents: write
 jobs:
