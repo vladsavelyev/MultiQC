@@ -1,12 +1,7 @@
 name: Update CHANGELOG.md
 
 on:
-  pull_request_review:
-    branches:
-      - master
-    types:
-      - submitted
-  # For manually triggering this workflow
+  push:
   workflow_dispatch:
     inputs:
       number:
