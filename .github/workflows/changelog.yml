@@ -43,9 +43,10 @@ jobs:
 
       - name: Push changes
         run: |
-          git config --global user.name 'GitHub Actions Bot'
-          git config --global user.email 'github-actions@github.com'
+          git config --global user.name 'MultiQC Bot'
+          git config --global user.email 'multiqc-bot@seqera.io'
+          git remote add origin_https https://${{ secrets.MQC_BOT_PAT }}@github.com/${{ github.event.pull_request.head.repo.full_name }}
           git add ${GITHUB_WORKSPACE}/CHANGELOG.md
           git commit -m "Update CHANGELOG.md"
-          git push
+          git push origin_https HEAD:${{ github.event.pull_request.head.ref }}
         
