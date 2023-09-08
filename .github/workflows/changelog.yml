@@ -2,8 +2,7 @@ name: Update CHANGELOG.md
 
 on:
   - pull_request
-permissions:
-  contents: write
+permissions: write-all
 jobs:
   update_changelog:
     runs-on: ubuntu-latest
@@ -41,8 +40,8 @@ jobs:
       - name: Commit and push if changed
         if: env.changed == 'YES'
         run: |
-          git config --local user.email "multiqc-bot@github.com"
-          git config --local user.name "MultiQC Bot"
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
           git add ${GITHUB_WORKSPACE}/CHANGELOG.md
           git commit -m "Update CHANGELOG.md"
 
