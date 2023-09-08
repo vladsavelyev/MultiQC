@@ -8,6 +8,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          fetch-depth: 0  # Important to fetch all history for all branches and tags
 
       - uses: actions/setup-python@v4
 
@@ -38,10 +42,10 @@ jobs:
           echo "file changed: ${{ env.changed }}"
 
       - name: Push changes
-        if: env.changed == 'YES'
-        id: push-local-repository-changes
-        uses: reloc8/action-push-local-changes@1.0.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          commit-message: "Update CHANGELOG.md"
+        run: |
+          git config --global user.name 'GitHub Actions Bot'
+          git config --global user.email 'github-actions@github.com'
+          git add ${GITHUB_WORKSPACE}/CHANGELOG.md
+          git commit -m "Update CHANGELOG.md"
+          git push
+        
