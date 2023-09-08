@@ -37,17 +37,11 @@ jobs:
           git diff --exit-code ${GITHUB_WORKSPACE}/CHANGELOG.md || echo "changed=YES" >> $GITHUB_ENV
           echo "file changed: ${{ env.changed }}"
 
-      - name: Commit and push if changed
-        if: env.changed == 'YES'
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add ${GITHUB_WORKSPACE}/CHANGELOG.md
-          git commit -m "Update CHANGELOG.md"
-
       - name: Push changes
         if: env.changed == 'YES'
-        uses: ad-m/github-push-action@master
+        id: push-local-repository-changes
+        uses: reloc8/action-push-local-changes@1.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ github.event.pull_request.head.ref }}
+          commit-message: "Update CHANGELOG.md"
