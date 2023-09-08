@@ -15,22 +15,22 @@ jobs:
 
       - uses: actions/setup-python@v4
 
-      - name: Check if CHANGELOG.md was modified by other commits (including previous runs of this workflow)
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          pr_number=${{ github.event.pull_request.number }}
-          files=$(gh pr diff $pr_number --name-only)
-          if [[ $files == *"CHANGELOG.md"* ]]; then
-            echo "CHANGELOG.md was modified in this PR"
-            echo "changelog_modified=true" >> $GITHUB_ENV
-          else
-            echo "CHANGELOG.md was not modified in this PR"
-            echo "changelog_modified=false" >> $GITHUB_ENV
-          fi
+#      - name: Check if CHANGELOG.md was modified by other commits (including previous runs of this workflow)
+#        env:
+#          GH_TOKEN: ${{ github.token }}
+#        run: |
+#          pr_number=${{ github.event.pull_request.number }}
+#          files=$(gh pr diff $pr_number --name-only)
+#          if [[ $files == *"CHANGELOG.md"* ]]; then
+#            echo "CHANGELOG.md was modified in this PR"
+#            echo "changelog_modified=true" >> $GITHUB_ENV
+#          else
+#            echo "CHANGELOG.md was not modified in this PR"
+#            echo "changelog_modified=false" >> $GITHUB_ENV
+#          fi
 
       - name: Update CHANGELOG.md from the PR title
-        if: env.changelog_modified == 'false'
+#        if: env.changelog_modified == 'false'
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
