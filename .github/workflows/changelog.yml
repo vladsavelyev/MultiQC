@@ -19,11 +19,7 @@ jobs:
     if: github.repository_owner == 'vladsavelyev' && github.event.review.state == 'approved'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          token: ${{ github.token }}
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v3
 
@@ -50,16 +46,14 @@ jobs:
 
       - name: Check if CHANGELOG.md actually changed
         run: |
-          git diff --exit-code CHANGELOG.md || echo "changed=YES" >> $GITHUB_ENV
+          git diff --exit-code ${GITHUB_WORKSPACE}/CHANGELOG.md || echo "changed=YES" >> $GITHUB_ENV
           echo "file changed: ${{ env.changed }}"
 
       - name: Commit and push if changed
         if: env.changed == 'YES'
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add CHANGELOG.md
+          git config user.email "action@github.com"
+          git config user.name "GitHub Action"
+          git add ${GITHUB_WORKSPACE}/CHANGELOG.md
           git commit -m "Update CHANGELOG.md"
           git push
