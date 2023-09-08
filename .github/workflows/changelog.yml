@@ -52,4 +52,4 @@ jobs:
         uses: ad-m/github-push-action@master
         with:
           branch: ${{ github.event.pull_request.head.ref }}
-          github_token: ${{ secrets.MQC_BOT_GITHUB_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
