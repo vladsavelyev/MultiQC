@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
 
       - uses: actions/setup-python@v3
 
@@ -42,8 +44,14 @@ jobs:
       - name: Commit and push if changed
         if: env.changed == 'YES'
         run: |
-          git config user.email "action@github.com"
-          git config user.name "GitHub Action"
+          git config --local user.email "multiqc-bot@github.com"
+          git config --local user.name "MultiQC Bot"
           git add ${GITHUB_WORKSPACE}/CHANGELOG.md
           git commit -m "Update CHANGELOG.md"
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+
+      - name: Push changes
+        if: env.changed == 'YES'
+        uses: ad-m/github-push-action@master
+        with:
+          branch: ${{ github.event.pull_request.head.ref }}
+          github_token: ${{ secrets.MQC_BOT_GITHUB_TOKEN }}
