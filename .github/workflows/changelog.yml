@@ -2,21 +2,21 @@ name: Update CHANGELOG.md
 
 on:
   - pull_request
-permissions: write-all
+
 jobs:
   update_changelog:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: changelog-ci
-        uses: saadmk11/changelog-ci@v1.1.2
-        id: changelog-ci
+        with:
+          token: ${{ secrets.MQC_BOT_PAT }}
 
-#      - uses: actions/checkout@v4
-#        with:
-#          ref: ${{ github.event.pull_request.head.ref }}
-#          repository: ${{ github.event.pull_request.head.repo.full_name }}
-#          fetch-depth: 0  # Important to fetch all history for all branches and tags
+      # Action runs on the issue comment, so we don't get the PR by default
+      # Use the gh cli to check out the PR
+      - name: Checkout Pull Request
+        run: gh pr checkout ${{ github.event.issue.number }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.MQC_BOT_PAT }}
 
 #      - uses: actions/setup-python@v4
 
@@ -33,7 +33,7 @@ jobs:
 #            echo "CHANGELOG.md was not modified in this PR"
 #            echo "changelog_modified=false" >> $GITHUB_ENV
 #          fi
-
+#
 #      - name: Update CHANGELOG.md from the PR title
 ##        if: env.changelog_modified == 'false'
 #        env:
@@ -45,12 +45,19 @@ jobs:
 #        run: |
 #          git diff --exit-code ${GITHUB_WORKSPACE}/CHANGELOG.md || echo "changed=YES" >> $GITHUB_ENV
 #          echo "file changed: ${{ env.changed }}"
-#
-#      - name: Push changes
-#        run: |
-#          git config --global user.name 'MultiQC Bot'
-#          git config --global user.email 'multiqc-bot@seqera.io'
-#          git remote add origin_https https://${{ secrets.MQC_BOT_PAT }}@github.com/${{ github.event.pull_request.head.repo.full_name }}
-#          git add ${GITHUB_WORKSPACE}/CHANGELOG.md
-#          git commit -m "Update CHANGELOG.md"
-#          git push origin_https HEAD:${{ github.event.pull_request.head.ref }}
+      
+      - name: Update CHANGELOG.md from the PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: echo "aaaa" >> ${GITHUB_WORKSPACE}/CHANGELOG.md
+
+      - name: Push changes
+        run: |
+          git config user.name 'MultiQC Bot'
+          git config user.email 'multiqc-bot@seqera.io'
+          git config push.default upstream
+          git add ${GITHUB_WORKSPACE}/CHANGELOG.md
+          git status
+          git commit -m "[automated] Update CHANGELOG.md"
+          git push
