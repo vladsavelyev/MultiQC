@@ -1,11 +1,9 @@
 name: Update CHANGELOG.md
-
 on:
-  pull_request_review:
-    branches:
-      - master
-    types:
-      - submitted
+  workflow_run:
+    workflows:
+      - "Trigger the changelog workflow"
+
   # For manually triggering this workflow
   workflow_dispatch:
     inputs:
