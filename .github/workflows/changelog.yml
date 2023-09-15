@@ -3,6 +3,8 @@ on:
   workflow_run:
     workflows:
       - "Trigger the changelog workflow"
+    types:
+      - completed
 
   # For manually triggering this workflow
   workflow_dispatch:
@@ -15,6 +17,11 @@ jobs:
   update_changelog:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: pr_number
+          path: pr/
+
       - uses: actions/checkout@v3
         with:
           token: ${{ secrets.MQC_BOT_GITHUB_TOKEN }}
@@ -32,7 +39,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.MQC_BOT_GITHUB_TOKEN }}
         run: |
-          pr_number=${{ github.event.pull_request.number }}
+          pr_number=$(cat ./pr/pr_number)
           files=$(gh pr diff $pr_number --name-only)
           if [[ $files == *"CHANGELOG.md"* ]]; then
             echo "CHANGELOG.md was modified in this PR"
@@ -47,7 +54,9 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: python ${GITHUB_WORKSPACE}/.github/workflows/changelog.py
+        run: |
+          pr_number=$(cat ./pr/pr_number)
+          python ${GITHUB_WORKSPACE}/.github/workflows/changelog.py
 
       - name: Check if CHANGELOG.md actually changed
         run: |
