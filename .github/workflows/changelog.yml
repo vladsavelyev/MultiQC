@@ -9,14 +9,14 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          token: ${{ secrets.MQC_BOT_GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       # Action runs on the issue comment, so we don't get the PR by default
       # Use the gh cli to check out the PR
       - name: Checkout Pull Request
         run: gh pr checkout ${{ github.event.pull_request.number }}
         env:
-          GITHUB_TOKEN: ${{ secrets.MQC_BOT_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 #      - uses: actions/setup-python@v4
 
