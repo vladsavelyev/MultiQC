@@ -15,7 +15,7 @@
 
 ---
 
-Test
+Test2
 
 MultiQC is a tool to create a single report with interactive plots for multiple bioinformatics analyses across many samples.
 
