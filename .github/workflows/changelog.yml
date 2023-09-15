@@ -1,10 +1,21 @@
 name: Update CHANGELOG.md
 
 on:
-  - pull_request_target
+  pull_request_review:
+    branches:
+      - master
+    types:
+      - submitted
+  # For manually triggering this workflow
+  workflow_dispatch:
+    inputs:
+      number:
+        description: PR number
+        required: true
 
 jobs:
   update_changelog:
+    if: github.repository_owner == 'ewels' && github.event.review.state == 'approved'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -45,12 +56,6 @@ jobs:
         run: |
           git diff --exit-code ${GITHUB_WORKSPACE}/CHANGELOG.md || echo "changed=YES" >> $GITHUB_ENV
           echo "file changed: ${{ env.changed }}"
-      
-#      - name: Update CHANGELOG.md from the PR title
-#        env:
-#          PR_TITLE: ${{ github.event.pull_request.title }}
-#          PR_NUMBER: ${{ github.event.pull_request.number }}
-#        run: echo "aaaa" >> ${GITHUB_WORKSPACE}/CHANGELOG.md
 
       - name: Push changes
         run: |
