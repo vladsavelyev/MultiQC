@@ -2079,3 +2079,15 @@ Bugfixes:
   structure in place and modules for FastQC, FastQ Screen, Cutadapt, Bismark,
   STAR, Bowtie, Subread featureCounts and Picard MarkDuplicates. Approaching
   stability, though still under fairly heavy development.
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
+aaaa
