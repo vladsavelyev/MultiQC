@@ -13,7 +13,6 @@ on:
 
 jobs:
   update_changelog:
-    if: github.repository_owner == 'vladsavelyev' && github.event.review.state == 'approved'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
