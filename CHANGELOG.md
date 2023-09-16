@@ -9,6 +9,7 @@
 - When exporting plots, make a more clear error message for unsupported FastQC dot plot [#1976](https://github.com/ewels/MultiQC/pull/1976)
 - Fixed parsing of `plot_type: "html"` `data` in json custom content
 - Replace deprecated `pkg_resources`
+-  ([#](https://github.com/ewels/MultiQC/pull/))
 
 ### New Modules
 
