@@ -38,8 +38,8 @@ jobs:
 
       - name: Update CHANGELOG.md from the PR title
         env:
-          PR_TITLE: ${{ github.event.issue.pull_request.title }}
-          PR_NUMBER: ${{ github.event.issue.pull_request.number }}
+          PR_TITLE: ${{ github.event.issue.title }}
+          PR_NUMBER: ${{ github.event.issue.number }}
           COMMENT: ${{ github.event.comment.body }}
         run: python ${GITHUB_WORKSPACE}/.github/workflows/changelog.py
 
