@@ -22,7 +22,8 @@ REPO_URL = "https://github.com/ewels/MultiQC"
 # Assumes the environment is set by the GitHub action.
 pr_title = os.environ["PR_TITLE"]
 pr_number = os.environ["PR_NUMBER"]
-base_path = Path(os.environ["GITHUB_WORKSPACE"])
+comment = os.environ.get("COMMENT", "")
+base_path = Path(os.environ.get("GITHUB_WORKSPACE", ""))
 
 # Trim the PR number added when GitHub squashes commits, e.g. "Module: Updated (#2026)"
 pr_title = pr_title.removesuffix(f" (#{pr_number})")
@@ -30,17 +31,12 @@ pr_title = pr_title.removesuffix(f" (#{pr_number})")
 changelog_path = base_path / "CHANGELOG.md"
 
 
-# If "(chore)" or "(docs)" is appended to the PR title, it indicates that we don't want to log this change.
-if pr_title.endswith("(chore)") or pr_title.endswith("(docs)"):
-    print("Skipping logging this change as it's a chore or docs update")
-    sys.exit(0)
-
-
 def find_module_info(module_name):
     """
-    Helper function to load module meta info. With current setup, can't really just import
-    the module and call `mod.info`, as the module does the heavy work on initialization.
-    But that's good - we avoid installing and importing MultiQC here, and the action runs faster.
+    Helper function to load module meta info. With current setup, can't really just
+    import the module and call `mod.info`, as the module does the heavy work on
+    initialization. But that's actually alright: we avoid installing and importing
+    MultiQC and the action runs faster.
     """
     module_name = module_name.lower()
     modules_dir = base_path / "multiqc/modules"
@@ -99,9 +95,13 @@ else:
 
 # Now that we determined the PR type, preparing the change log entry.
 pr_link = f"([#{pr_number}]({REPO_URL}/pull/{pr_number}))"
-if section == "### New modules":
+if comment := comment.removeprefix("/changelog ").strip():
     new_lines = [
-        f"- [**{mod['name']}**]({mod['url']})\n",
+        f"- {comment} {pr_link}\n",
+    ]
+elif section == "### New modules":
+    new_lines = [
+        f"- [**{mod['name']}**]({mod['url']}) {pr_link}\n",
         f"  - {mod['name']} {mod['info']}\n",
     ]
 elif section == "### Module updates":
@@ -179,13 +179,26 @@ while orig_lines:
                 updated_lines.extend(section_lines)
                 updated_lines.extend(new_lines)
                 updated_lines.append("\n")
-                print(f"Updated {changelog_path} section '{section}' with lines: {new_lines}")
+                print(f"Updated {changelog_path} section '{section}' with lines:\n" + "".join(new_lines))
                 new_lines = None
                 # Pushing back the next section header line
                 orig_lines.insert(0, line)
                 break
             elif line.strip():
-                section_lines.append(line)
+                # if the line already contains a link to the PR, don't add it again.
+                if line.strip().endswith(pr_link):
+                    existing = line + "".join(orig_lines[: len(new_lines) - 1])
+                    if "".join(new_lines) == existing:
+                        print(f"Found existing identical entry for this pull request #{pr_number}:")
+                        print(existing)
+                        sys.exit(0)
+                    else:
+                        print(f"Found existing entry for this pull request #{pr_number}. It will be replaced:")
+                        print(existing)
+                        for _ in range(len(new_lines) - 1):
+                            orig_lines.pop(0)
+                else:
+                    section_lines.append(line)
     else:
         updated_lines.append(line)
 
