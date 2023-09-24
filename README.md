@@ -15,8 +15,6 @@
 
 ---
 
-Test2
-
 MultiQC is a tool to create a single report with interactive plots for multiple bioinformatics analyses across many samples.
 
 MultiQC is written in Python (tested with v3.6+). It is
