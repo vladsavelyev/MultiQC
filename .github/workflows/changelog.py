@@ -98,7 +98,7 @@ else:
 
 # Now that we determined the PR type, preparing the change log entry.
 pr_link = f"([#{pr_number}]({REPO_URL}/pull/{pr_number}))"
-if comment := comment.removeprefix("/changelog ").strip():
+if comment := comment.removeprefix("/changelog").strip():
     new_lines = [
         f"- {comment} {pr_link}\n",
     ]
