@@ -11,6 +11,8 @@ on:
         required: true
 
 env:
+  PR_TITLE: ${{ github.event.pull_request.title }}
+  PR_NUMBER: ${{ github.event.pull_request.number }}
   GH_TOKEN: ${{ github.token }}
 
 jobs:
@@ -20,7 +22,7 @@ jobs:
     if: >
       github.repository_owner == 'vladsavelyev' &&
       github.event.issue.pull_request &&
-      startsWith(github.event.comment.body, '/changelog')
+      startsWith(github.event.comment.body, '@multiqc-bot changelog')
 
     steps:
       - uses: actions/checkout@v3
@@ -38,8 +40,8 @@ jobs:
 
       - name: Update CHANGELOG.md from the PR title
         env:
-          PR_TITLE: ${{ github.event.issue.title }}
-          PR_NUMBER: ${{ github.event.issue.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           COMMENT: ${{ github.event.comment.body }}
         run: python ${GITHUB_WORKSPACE}/.github/workflows/changelog.py
 
