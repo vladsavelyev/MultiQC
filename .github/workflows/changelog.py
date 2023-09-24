@@ -25,6 +25,9 @@ pr_number = os.environ["PR_NUMBER"]
 comment = os.environ.get("COMMENT", "")
 base_path = Path(os.environ.get("GITHUB_WORKSPACE", ""))
 
+assert pr_title, pr_title
+assert pr_number, pr_number
+
 # Trim the PR number added when GitHub squashes commits, e.g. "Module: Updated (#2026)"
 pr_title = pr_title.removesuffix(f" (#{pr_number})")
 
