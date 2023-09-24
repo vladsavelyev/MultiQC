@@ -29,6 +29,13 @@ jobs:
         with:
           token: ${{ secrets.MQC_BOT_GITHUB_TOKEN }}
 
+      # Action runs on the issue comment, so we don't get the PR by default
+      # Use the gh cli to check out the PR
+      - name: Checkout Pull Request
+        run: gh pr checkout ${{ github.event.issue.number }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.nf_core_bot_auth_token }}
+
       - uses: actions/setup-python@v3
 
       - name: Update CHANGELOG.md from the PR title
