@@ -10,6 +10,7 @@
 - Fixed parsing of `plot_type: "html"` `data` in json custom content
 - Replace deprecated `pkg_resources`
 -  ([#](https://github.com/ewels/MultiQC/pull/))
+- /changelog ([#21](https://github.com/ewels/MultiQC/pull/21))
 
 ### New Modules
 
