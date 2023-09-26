@@ -10,6 +10,7 @@ from multiqc.plots import beeswarm
 
 # Initialise the logger
 log = logging.getLogger(__name__)
+pass
 
 
 class FlagstatReportMixin:
