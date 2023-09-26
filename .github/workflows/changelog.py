@@ -278,7 +278,7 @@ while orig_lines:
                     updated_lines.append(line)
             break
         continue
-
+        
     if inside_version_dev and line.lower().startswith(section.lower()):  # Section of interest header
         if already_added_entry:
             print(f"Already added new lines into section {section}, is the section duplicated?", file=sys.stderr)
@@ -291,7 +291,10 @@ while orig_lines:
             if line.startswith("##"):
                 # Found the next section header, so need to put all the lines we collected.
                 updated_lines.append("\n")
-                updated_lines.extend(sorted([_l for _l in section_lines + new_lines if _l.strip()]))
+                _updated_lines = [_l for _l in section_lines + new_lines if _l.strip()]
+                if section == "### Module updates":
+                    _updated_lines = sorted(_updated_lines)
+                updated_lines.extend(_updated_lines)
                 updated_lines.append("\n")
                 print(f"Updated {changelog_path} section '{section}' with lines:\n" + "".join(new_lines))
                 already_added_entry = True
