@@ -41,6 +41,7 @@ class FlagstatReportMixin:
                 "modify": lambda x: x * config.read_count_multiplier,
                 "shared_key": "read_count",
                 "hidden": True,
+                "change": "",
             }
             flagstats_headers["mapped_passed"] = {
                 "title": "{} Reads Mapped".format(config.read_count_prefix),
