@@ -27,6 +27,7 @@ class FlagstatReportMixin:
 
         # Filter to strip out ignored sample names
         self.samtools_flagstat = self.ignore_samples(self.samtools_flagstat)
+        pass
 
         if len(self.samtools_flagstat) > 0:
             # Write parsed report data to a file (restructure first)
