@@ -1,0 +1,1 @@
+from .quast import MultiqcModule
