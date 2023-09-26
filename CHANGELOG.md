@@ -11,6 +11,12 @@
 
 ### Module updates
 
+- **NanoStat**: Support new format ([#1997](https://github.com/ewels/MultiQC/pull/1997)).
+- **RSeQC**: Fix `max() arg is an empty sequence` error ([#1985](https://github.com/ewels/MultiQC/issues/1985))
+- **RSeQC**: Fix division by zero on all-zero input ([#2040](https://github.com/ewels/MultiQC/pull/2040))
+- **Samtools**: Flagstat: add random change ([#23](https://github.com/ewels/MultiQC/pull/23))
+- **Samtools**: Stats: fix "Percent Mapped" plot when samtools was run with read filtering ([#1972](https://github.com/ewels/MultiQC/pull/1972))
+
 ## [MultiQC v1.16](https://github.com/ewels/MultiQC/releases/tag/v1.16) - 2023-09-22
 
 ### Highlight: Software versions
