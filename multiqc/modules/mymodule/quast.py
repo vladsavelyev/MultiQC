@@ -17,10 +17,10 @@ class MultiqcModule(BaseMultiqcModule):
     def __init__(self):
         # Initialise the parent object
         super(MultiqcModule, self).__init__(
-            name="QUAST",
-            anchor="quast",
-            href="http://quast.bioinf.spbau.ru/",
-            info="is a quality assessment tool for genome assemblies, written by the Center for Algorithmic Biotechnology.",
+            name="My Module",
+            anchor="mymodule",
+            href="http://mymodule.ru/",
+            info="my awesome module.",
             doi="10.1093/bioinformatics/btt086",
         )
 
