@@ -24,7 +24,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO_URL = "https://github.com/ewels/MultiQC"
+REPO_URL = "https://github.com/vladsavelyev/MultiQC"
 MODULES_DIR = "multiqc/modules"
 
 # Assumes the environment is set by the GitHub action.
