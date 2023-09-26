@@ -24,6 +24,7 @@ class StatsReportMixin:
             for line in f["f"].splitlines():
                 if not line.startswith("SN"):
                     continue
+                pass
                 sections = line.split("\t")
                 field = sections[1].strip()[:-1]
                 field = field.replace(" ", "_")
