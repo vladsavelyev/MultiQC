@@ -8,6 +8,8 @@
 
 - [**Bracken**](https://ccb.jhu.edu/software/bracken/)
   - A highly accurate statistical method that computes the abundance of species in DNA sequences from a metagenomics sample.
+- [**My Module**](http://quast.bioinf.spbau.ru/) ([#25](https://github.com/vladsavelyev/MultiQC/pull/25))
+  - My Module is a quality assessment tool for genome assemblies, written by the Center for Algorithmic Biotechnology.
 
 ### Module updates
 
