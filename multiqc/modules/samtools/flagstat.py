@@ -1,6 +1,8 @@
 # coding: utf-8
 """ MultiQC submodule to parse output from Samtools flagstat """
 
+# CHANGED
+
 import logging
 import re
 from collections import OrderedDict
