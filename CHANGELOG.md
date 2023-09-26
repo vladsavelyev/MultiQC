@@ -4,6 +4,8 @@
 
 ### MultiQC updates
 
+- Regular update ([#26](https://github.com/vladsavelyev/MultiQC/pull/26))
+
 ### New Modules
 
 - [**Bracken**](https://ccb.jhu.edu/software/bracken/)
@@ -11,7 +13,6 @@
 
 ### Module updates
 
-- **Samtools**: Update flagstat ([#26](https://github.com/vladsavelyev/MultiQC/pull/26))
 
 ## [MultiQC v1.16](https://github.com/ewels/MultiQC/releases/tag/v1.16) - 2023-09-22
 
