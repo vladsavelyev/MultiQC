@@ -20,7 +20,7 @@ class MultiqcModule(BaseMultiqcModule):
             name="My Module",
             anchor="mymodule",
             href="http://mymodule.ru/",
-            info="my awesome module.",
+            info="is my awesome module.",
             doi="10.1093/bioinformatics/btt086",
         )
 
