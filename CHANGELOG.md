@@ -4,6 +4,8 @@
 
 ### MultiQC updates
 
+- Add ([#27](https://github.com/vladsavelyev/MultiQC/pull/27))
+
 ### New Modules
 
 - [**Bracken**](https://ccb.jhu.edu/software/bracken/)
