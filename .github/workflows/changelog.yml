@@ -42,10 +42,10 @@ jobs:
         run: |
           if [[ "${{ github.event_name }}" == "issue_comment" ]]; then
             export PR_NUMBER=${{ github.event.issue.number }}
-            export PR_TITLE=${{ github.event.issue.title }}
+            export PR_TITLE="${{ github.event.issue.title }}"
           elif [[ "${{ github.event_name }}" == "pull_request_target" ]]; then
             export PR_NUMBER=${{ github.event.pull_request.number }}
-            export PR_TITLE=${{ github.event.pull_request.title }}
+            export PR_TITLE="${{ github.event.pull_request.title }}"
           fi
           python ${GITHUB_WORKSPACE}/.github/workflows/changelog.py
 
