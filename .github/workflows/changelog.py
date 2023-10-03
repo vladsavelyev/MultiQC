@@ -76,7 +76,8 @@ def _find_module_info(py_path: Path) -> dict[str]:
 
 def _files_altered_by_pr(pr_number, types=None) -> set[Path]:
     """
-    Returns a list of files added by the PR.
+    Returns a list of files added or modified by the PR (depending on `types`,
+    which can be a subset of `{'added', 'modified'}`)
     """
     if types is None:
         types = {"added"}
@@ -179,9 +180,9 @@ section, mod = _determine_change_type(pr_title, pr_number)
 
 # Prepare the change log entry.
 pr_link = f"([#{pr_number}]({REPO_URL}/pull/{pr_number}))"
-if comment := comment.removeprefix("@multiqc-bot changelog").strip().capitalize():
+if comment := comment.removeprefix("@multiqc-bot changelog").strip():
     new_lines = [
-        f"- {comment.capitalize()} {pr_link}\n",
+        f"- {comment} {pr_link}\n",
     ]
 elif section == "### New modules":
     new_lines = [
@@ -190,13 +191,13 @@ elif section == "### New modules":
     ]
 elif section == "### Module updates":
     assert mod is not None
-    descr = pr_title.split(":", maxsplit=1)[1].strip().capitalize()
+    descr = pr_title.split(":", maxsplit=1)[1].strip()
     new_lines = [
         f"- **{mod['name']}**: {descr} {pr_link}\n",
     ]
 else:
     new_lines = [
-        f"- {pr_title.capitalize()} {pr_link}\n",
+        f"- {pr_title} {pr_link}\n",
     ]
 
 
@@ -278,7 +279,7 @@ while orig_lines:
                     updated_lines.append(line)
             break
         continue
-        
+
     if inside_version_dev and line.lower().startswith(section.lower()):  # Section of interest header
         if already_added_entry:
             print(f"Already added new lines into section {section}, is the section duplicated?", file=sys.stderr)
