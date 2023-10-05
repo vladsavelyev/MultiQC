@@ -8,12 +8,18 @@ on:
 jobs:
   update_changelog:
     runs-on: ubuntu-latest
-    # Only run if comment is on a PR with the main repo, and if it contains the magic keywords
+    # Run if comment is on a PR with the main repo, and if it contains the magic keywords.
+    # Or run on PR creation, unless asked otherwise in the title.
     if: >
       github.repository_owner == 'vladsavelyev' &&
-      (github.event_name == 'pull_request_target' || 
-      github.event.issue.pull_request && 
-      startsWith(github.event.comment.body, '@multiqc-bot changelog'))
+      (
+        github.event_name == 'pull_request_target' && 
+          !contains(github.event.pull_request.title, '(chore)' &&
+          !contains(github.event.pull_request.title, '(docs)'
+      ) || 
+        github.event.issue.pull_request && 
+        startsWith(github.event.comment.body, '@multiqc-bot changelog')
+      )
 
     steps:
       - uses: actions/checkout@v3
@@ -41,7 +47,7 @@ jobs:
           GH_TOKEN: ${{ secrets.MQC_BOT_GITHUB_TOKEN }}
         run: |
           if [[ "${{ github.event_name }}" == "issue_comment" ]]; then
-            export PR_NUMBER=${{ github.event.issue.number }}
+            export PR_NUMBER=${{ github.event.issue.number }}"
             export PR_TITLE="${{ github.event.issue.title }}"
           elif [[ "${{ github.event_name }}" == "pull_request_target" ]]; then
             export PR_NUMBER=${{ github.event.pull_request.number }}
