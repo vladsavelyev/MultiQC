@@ -211,17 +211,23 @@ updated_lines = []
 
 def _skip_existing_entry_for_this_pr(line, same_section=True):
     if line.strip().endswith(pr_link):
-        existing = line + "".join(orig_lines[: len(new_lines) - 1])
-        if "".join(new_lines) == existing and same_section:
-            print(f"Found existing identical entry for this pull request #{pr_number}:")
-            print(existing)
-            sys.exit(0)
+        existing_lines = [line]
+        for next_line in orig_lines:
+            if next_line.startswith("  "):  # Module detail line
+                existing_lines.append(next_line)
+            else:
+                break
+
+        if new_lines and new_lines == existing_lines and same_section:
+            print(f"Found existing identical entry for this pull request #{pr_number} in the same section:")
+            print("".join(existing_lines))
+            sys.exit(0)  # Just leaving the CHANGELOG intact
         else:
             print(
                 f"Found existing entry for this pull request #{pr_number}. It will be replaced and/or moved to proper section"
             )
-            print(existing)
-            for _ in range(len(new_lines)):
+            print("".join(existing_lines))
+            for _ in range(len(existing_lines)):
                 try:
                     line = orig_lines.pop(0)
                 except IndexError:
@@ -297,7 +303,10 @@ while orig_lines:
                     _updated_lines = sorted(_updated_lines)
                 updated_lines.extend(_updated_lines)
                 updated_lines.append("\n")
-                print(f"Updated {changelog_path} section '{section}' with lines:\n" + "".join(new_lines))
+                if new_lines:
+                    print(f"Updated {changelog_path} section '{section}' with lines:\n" + "".join(new_lines))
+                else:
+                    print(f"Removed existing entry from {changelog_path} section '{section}'")
                 already_added_entry = True
                 # Pushing back the next section header line
                 orig_lines.insert(0, line)
@@ -307,6 +316,18 @@ while orig_lines:
             section_lines.append(line)
     else:
         updated_lines.append(line)
+
+
+def collapse_newlines(lines):
+    updated = []
+    for idx in range(len(lines)):
+        if idx != 0 and not lines[idx].strip() and not lines[idx - 1].strip():
+            continue
+        updated.append(lines[idx])
+    return updated
+
+
+updated_lines = collapse_newlines(updated_lines)
 
 
 # Finally, writing the updated lines back.
