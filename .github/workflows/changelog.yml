@@ -14,8 +14,8 @@ jobs:
       github.repository_owner == 'vladsavelyev' && 
       (
         github.event_name == 'pull_request_target' && 
-        !contains(github.event.pull_request.title, '(chore)' &&
-        !contains(github.event.pull_request.title, '(docs)'
+        !contains(github.event.pull_request.title, '(chore)') &&
+        !contains(github.event.pull_request.title, '(docs)')
         ||
         github.event.issue.pull_request && 
         startsWith(github.event.comment.body, '@multiqc-bot changelog')
