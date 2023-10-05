@@ -179,27 +179,27 @@ def _determine_change_type(pr_title, pr_number) -> tuple[str, dict]:
 section, mod = _determine_change_type(pr_title, pr_number)
 
 # Prepare the change log entry.
+new_lines = []
 pr_link = f"([#{pr_number}]({REPO_URL}/pull/{pr_number}))"
 if comment := comment.removeprefix("@multiqc-bot changelog").strip():
-    new_lines = [
-        f"- {comment} {pr_link}\n",
-    ]
-elif section == "### New modules":
-    new_lines = [
-        f"- [**{mod['name']}**]({mod['url']}) {pr_link}\n",
-        f"  - {mod['name']} {mod['info']}\n",
-    ]
-elif section == "### Module updates":
-    assert mod is not None
-    descr = pr_title.split(":", maxsplit=1)[1].strip()
-    new_lines = [
-        f"- **{mod['name']}**: {descr} {pr_link}\n",
-    ]
+    pr_title = comment
 else:
-    new_lines = [
-        f"- {pr_title} {pr_link}\n",
-    ]
-
+    if section == "### New modules":
+        new_lines = [
+            f"- [**{mod['name']}**]({mod['url']}) {pr_link}\n",
+            f"  - {mod['name']} {mod['info']}\n",
+        ]
+    elif section == "### Module updates":
+        assert mod is not None
+        descr = pr_title.split(":", maxsplit=1)[1].strip()
+        new_lines = [
+            f"- **{mod['name']}**: {descr} {pr_link}\n",
+        ]
+if not new_lines:
+    if "[skip changelog]" not in pr_title:
+        new_lines = [
+            f"- {pr_title} {pr_link}\n",
+        ]
 
 # Finally, updating the changelog.
 # Read the current changelog lines. We will print them back as is, except for one new
